@@ -62,9 +62,10 @@ public class MainActivity extends Activity {
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
 
-        // 换肤功能
+        // 换肤功能按钮
         themeButton.setOnClickListener(v -> showThemeDialog());
 
+        // 点击打开
         listView.setOnItemClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             if (app.launchIntent != null) {
@@ -78,6 +79,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        // 长按菜单
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             String[] options = {"复制包名", "应用信息", "卸载应用"};
@@ -108,6 +110,7 @@ public class MainActivity extends Activity {
             return true;
         });
 
+        // 搜索框监听
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -119,6 +122,7 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
+        // 刷新按钮
         refreshButton.setOnClickListener(v -> {
             if (searchBox.getText().length() > 0) {
                 searchBox.setText(""); 
@@ -132,19 +136,19 @@ public class MainActivity extends Activity {
         scanApps();
     }
 
-    // 弹窗选择颜色
+    // 弹窗选择加深后的颜色
     private void showThemeDialog() {
-        String[] themes = {"护眼灰蓝 (默认)", "豆沙绿 (极度护眼)", "燕麦米黄 (温馨)", "夜间深灰 (适合深夜)"};
+        String[] themes = {"莫兰迪灰蓝 (高级感)", "加深豆沙绿 (护眼)", "暖咖米黄 (温馨)", "夜间深灰 (不刺眼)"};
         new AlertDialog.Builder(this)
                 .setTitle("选择一个舒适的背景色")
                 .setItems(themes, (dialog, which) -> {
                     String colorHex;
                     switch (which) {
-                        case 0: colorHex = "#F2F6FA"; break; // 灰蓝
-                        case 1: colorHex = "#E8F0E8"; break; // 豆沙绿
-                        case 2: colorHex = "#F9F6F0"; break; // 米黄
-                        case 3: colorHex = "#2C2C2C"; break; // 深灰
-                        default: colorHex = "#F2F6FA";
+                        case 0: colorHex = "#DCE7F0"; break; // 加深的灰蓝
+                        case 1: colorHex = "#DDEADE"; break; // 加深的豆沙绿
+                        case 2: colorHex = "#F4EFE1"; break; // 加深的米黄
+                        case 3: colorHex = "#303030"; break; // 夜间深灰
+                        default: colorHex = "#DCE7F0";
                     }
                     rootLayout.setBackgroundColor(Color.parseColor(colorHex));
                 })
@@ -212,6 +216,7 @@ public class MainActivity extends Activity {
                 found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
+            // 智能排序
             Collections.sort(found, (a, b) -> {
                 if (a.isDetected != b.isDetected) {
                     return a.isDetected ? -1 : 1;
