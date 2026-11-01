@@ -67,23 +67,25 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 长按卸载（终极强制版）
+        // 长按卸载
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             new AlertDialog.Builder(this)
                     .setTitle("卸载应用")
-                    .setMessage("确定要卸载 " + app.label + " 吗？\n\n如果点击无反应，请选择跳转到系统设置手动卸载。")
-                    .setPositiveButton("直接卸载", (dialog, which) -> {
+                    .setMessage("确定要卸载 " + app.label + " 吗？\n包名：" + app.packageName)
+                    .setPositiveButton("卸载", (dialog, which) -> {
                         try {
                             Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
                             uninstallIntent.setData(Uri.parse("package:" + app.packageName));
                             startActivity(uninstallIntent);
+                            Toast.makeText(MainActivity.this, "卸载完成后，请点击右上角刷新", Toast.LENGTH_LONG).show();
                         } catch (Exception e) {
-                            // 失败直接跳设置页
-                            jumpToSettings(app.packageName);
+                            Toast.makeText(MainActivity.this, "系统限制直接卸载，已为您跳转设置页", Toast.LENGTH_SHORT).show();
+                            Intent detailsIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            detailsIntent.setData(Uri.parse("package:" + app.packageName));
+                            startActivity(detailsIntent);
                         }
                     })
-                    .setNeutralButton("去设置页", (dialog, which) -> jumpToSettings(app.packageName))
                     .setNegativeButton("取消", null)
                     .show();
             return true;
@@ -101,36 +103,21 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 刷新按钮（清空重绘）
+        // 刷新按钮
         refreshButton.setOnClickListener(v -> {
             searchBox.setText(""); 
             scanApps();
         });
 
+        // 勾选框切换事件：一旦改变状态，立刻重新扫描
         showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> scanApps());
 
         scanApps();
     }
 
-    private void jumpToSettings(String packageName) {
-        try {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-            intent.setData(Uri.parse("package:" + packageName));
-            startActivity(intent);
-            Toast.makeText(this, "请在系统界面点击【卸载】", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "无法打开设置页", Toast.LENGTH_SHORT).show();
-        }
-    }
-
     private void scanApps() {
         refreshButton.setEnabled(false);
         refreshButton.setText("扫描中...");
-        
-        // 刷新时先清空列表，给用户视觉反馈
-        apps.clear();
-        allApps.clear();
-        adapter.notifyDataSetChanged();
 
         new Thread(() -> {
             PackageManager pm = getPackageManager();
@@ -141,8 +128,10 @@ public class MainActivity extends Activity {
             boolean isShowAll = showAllCheckbox.isChecked();
 
             for (ApplicationInfo ai : installed) {
+                // 过滤掉系统自带应用
                 if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
 
+                // 必须有启动入口（排除后台服务）
                 Intent launch = pm.getLaunchIntentForPackage(ai.packageName);
                 if (launch == null) continue;
 
@@ -160,6 +149,7 @@ public class MainActivity extends Activity {
 
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
 
+                // 核心逻辑：如果勾选了"显示全部"，或者 名字命中 或者 有VPN权限，则加入列表
                 if (!isShowAll && !isMatch && !hasVpnPermission) {
                     continue;
                 }
@@ -177,12 +167,14 @@ public class MainActivity extends Activity {
             Collections.sort(found, (a, b) -> Collator.getInstance().compare(a.label, b.label));
 
             runOnUiThread(() -> {
+                allApps.clear();
                 allApps.addAll(found);
+                
                 filterApps(searchBox.getText().toString());
 
                 refreshButton.setEnabled(true);
                 refreshButton.setText("刷新");
-                Toast.makeText(MainActivity.this, "刷新成功，共 " + allApps.size() + " 个应用", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, isShowAll ? "已显示全部应用" : "已智能过滤", Toast.LENGTH_SHORT).show();
             });
         }).start();
     }
