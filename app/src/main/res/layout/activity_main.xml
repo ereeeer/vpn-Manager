@@ -5,12 +5,26 @@
     android:orientation="vertical"
     android:background="#FFFFFF">
 
-    <!-- 顶部操作栏 -->
+    <!-- 顶部名字 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="VPN 启动器"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:gravity="center"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp" />
+
+    <!-- 搜索与刷新栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
         android:gravity="center_vertical">
 
         <EditText
@@ -32,6 +46,17 @@
             android:text="刷新"
             android:textSize="14sp" />
     </LinearLayout>
+
+    <!-- 新增：显示全部应用的开关 -->
+    <CheckBox
+        android:id="@+id/show_all_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:text="显示手机内全部应用 (防漏网)"
+        android:textSize="14sp"
+        android:textColor="#555555" />
 
     <ListView
         android:id="@+id/list"
