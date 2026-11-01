@@ -45,6 +45,9 @@ public class MainActivity extends Activity {
     private CheckBox showAllCheckbox;
     private AppAdapter adapter;
     
+    // 新增：记录当前是不是夜间模式
+    private boolean isDarkMode = false;
+
     private final List<AppInfo> allApps = new ArrayList<>();
     private final List<AppInfo> apps = new ArrayList<>();
 
@@ -139,25 +142,28 @@ public class MainActivity extends Activity {
                 .setTitle("选择一个对比强烈的背景色")
                 .setItems(themes, (dialog, which) -> {
                     String colorHex;
-                    boolean isDark = false; 
-
+                    
                     switch (which) {
-                        case 0: colorHex = "#D6E4F0"; break; // 明显的灰蓝
-                        case 1: colorHex = "#CCE8CF"; break; // 明显的浅绿
-                        case 2: colorHex = "#FCE8C8"; break; // 明显的米黄
-                        case 3: colorHex = "#121212"; isDark = true; break; // 纯黑
-                        default: colorHex = "#D6E4F0";
+                        case 0: colorHex = "#D6E4F0"; isDarkMode = false; break; // 明显的灰蓝
+                        case 1: colorHex = "#CCE8CF"; isDarkMode = false; break; // 明显的浅绿
+                        case 2: colorHex = "#FCE8C8"; isDarkMode = false; break; // 明显的米黄
+                        case 3: colorHex = "#121212"; isDarkMode = true; break;  // 纯黑
+                        default: colorHex = "#D6E4F0"; isDarkMode = false;
                     }
                     
                     rootLayout.setBackgroundColor(Color.parseColor(colorHex));
                     
-                    if (isDark) {
+                    // 切换主题后，文字颜色也要跟着换
+                    if (isDarkMode) {
                         titleText.setTextColor(Color.WHITE);
                         showAllCheckbox.setTextColor(Color.WHITE);
                     } else {
                         titleText.setTextColor(Color.parseColor("#333333"));
                         showAllCheckbox.setTextColor(Color.parseColor("#555555"));
                     }
+                    
+                    // 通知列表重新绘制，让卡片里的字变色
+                    adapter.notifyDataSetChanged();
                 })
                 .show();
     }
@@ -299,6 +305,15 @@ public class MainActivity extends Activity {
             iconView.setImageDrawable(app.icon);
             nameView.setText(app.label);
             packageView.setText(app.packageName);
+
+            // 【核心修改】：根据日间/夜间模式，动态改变名字和包名的颜色
+            if (isDarkMode) {
+                nameView.setTextColor(Color.WHITE);               // 夜间模式字变纯白
+                packageView.setTextColor(Color.parseColor("#BBBBBB")); // 包名变亮灰色
+            } else {
+                nameView.setTextColor(Color.parseColor("#212121")); // 白天模式恢复深色
+                packageView.setTextColor(Color.parseColor("#757575")); // 包名恢复中灰色
+            }
 
             if (app.isDetected) {
                 checkMarkView.setVisibility(View.VISIBLE);
