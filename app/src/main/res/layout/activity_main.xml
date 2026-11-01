@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="VPN 启动器"
+        android:text="VPN 管理器"
         android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="#333333"
