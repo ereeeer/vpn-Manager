@@ -4,9 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F2F6FA">
+    android:background="#D6E4F0">
 
-    <!-- 顶部名字 (加了 id="@+id/title_text") -->
     <TextView
         android:id="@+id/title_text"
         android:layout_width="match_parent"
@@ -19,7 +18,6 @@
         android:paddingTop="16dp"
         android:paddingBottom="8dp" />
 
-    <!-- 搜索与操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -58,7 +56,6 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- 显示全部应用的开关 (加了 id="@+id/show_all_checkbox") -->
     <CheckBox
         android:id="@+id/show_all_checkbox"
         android:layout_width="wrap_content"
