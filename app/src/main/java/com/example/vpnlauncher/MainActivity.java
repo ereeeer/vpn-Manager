@@ -97,9 +97,14 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
+        // 刷新按钮
         refreshButton.setOnClickListener(v -> {
-            searchBox.setText(""); 
-            scanApps();
+            // 如果搜索框有字，刷新时清空搜索框；如果没字，保持不动
+            if (searchBox.getText().length() > 0) {
+                searchBox.setText(""); 
+            } else {
+                scanApps();
+            }
         });
 
         showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> scanApps());
@@ -121,10 +126,11 @@ public class MainActivity extends Activity {
     private void scanApps() {
         refreshButton.setEnabled(false);
         refreshButton.setText("扫描中...");
-        
-        apps.clear();
-        allApps.clear();
-        adapter.notifyDataSetChanged();
+
+        // 核心魔法 1：在刷新前，记住当前列表滑到了第几个，以及偏移量
+        int firstVisiblePosition = listView.getFirstVisiblePosition();
+        View v = listView.getChildAt(0);
+        int top = (v == null) ? 0 : v.getTop();
 
         new Thread(() -> {
             PackageManager pm = getPackageManager();
@@ -153,11 +159,8 @@ public class MainActivity extends Activity {
                 }
 
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
-
-                // 判断是否被系统“智能检测”出来
                 boolean isDetected = isMatch || hasVpnPermission;
 
-                // 如果没勾选“显示全部”，且没检测到，就跳过不显示
                 if (!isShowAll && !isDetected) {
                     continue;
                 }
@@ -169,15 +172,19 @@ public class MainActivity extends Activity {
                     icon = pm.getDefaultActivityIcon();
                 }
 
-                // 把 isDetected 标记存入 AppInfo
                 found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
             Collections.sort(found, (a, b) -> Collator.getInstance().compare(a.label, b.label));
 
             runOnUiThread(() -> {
+                allApps.clear();
                 allApps.addAll(found);
+                
                 filterApps(searchBox.getText().toString());
+
+                // 核心魔法 2：数据更新完后，瞬间滑动回刚才记住的位置
+                listView.setSelectionFromTop(firstVisiblePosition, top);
 
                 refreshButton.setEnabled(true);
                 refreshButton.setText("刷新");
@@ -207,7 +214,7 @@ public class MainActivity extends Activity {
         final String packageName;
         final Drawable icon;
         final Intent launchIntent;
-        final boolean isDetected; // 新增：记录是否被检测到
+        final boolean isDetected;
 
         AppInfo(String label, String packageName, Drawable icon, Intent launchIntent, boolean isDetected) {
             this.label = label;
@@ -237,13 +244,12 @@ public class MainActivity extends Activity {
             ImageView iconView = row.findViewById(R.id.app_icon);
             TextView nameView = row.findViewById(R.id.app_name);
             TextView packageView = row.findViewById(R.id.app_package);
-            TextView checkMarkView = row.findViewById(R.id.check_mark); // 找到勾勾
+            TextView checkMarkView = row.findViewById(R.id.check_mark);
 
             iconView.setImageDrawable(app.icon);
             nameView.setText(app.label);
             packageView.setText(app.packageName);
 
-            // 核心判断：如果是被智能检测出来的，就显示对勾，否则隐藏
             if (app.isDetected) {
                 checkMarkView.setVisibility(View.VISIBLE);
             } else {
