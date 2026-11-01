@@ -53,7 +53,6 @@ public class MainActivity extends Activity {
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
 
-        // 点击打开
         listView.setOnItemClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             if (app.launchIntent != null) {
@@ -67,31 +66,26 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 长按卸载
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             new AlertDialog.Builder(this)
                     .setTitle("卸载应用")
-                    .setMessage("确定要卸载 " + app.label + " 吗？\n包名：" + app.packageName)
-                    .setPositiveButton("卸载", (dialog, which) -> {
+                    .setMessage("确定要卸载 " + app.label + " 吗？\n\n如果点击无反应，请选择跳转到系统设置手动卸载。")
+                    .setPositiveButton("直接卸载", (dialog, which) -> {
                         try {
                             Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
                             uninstallIntent.setData(Uri.parse("package:" + app.packageName));
                             startActivity(uninstallIntent);
-                            Toast.makeText(MainActivity.this, "卸载完成后，请点击右上角刷新", Toast.LENGTH_LONG).show();
                         } catch (Exception e) {
-                            Toast.makeText(MainActivity.this, "系统限制直接卸载，已为您跳转设置页", Toast.LENGTH_SHORT).show();
-                            Intent detailsIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                            detailsIntent.setData(Uri.parse("package:" + app.packageName));
-                            startActivity(detailsIntent);
+                            jumpToSettings(app.packageName);
                         }
                     })
+                    .setNeutralButton("去设置页", (dialog, which) -> jumpToSettings(app.packageName))
                     .setNegativeButton("取消", null)
                     .show();
             return true;
         });
 
-        // 搜索框
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -103,21 +97,34 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 刷新按钮
         refreshButton.setOnClickListener(v -> {
             searchBox.setText(""); 
             scanApps();
         });
 
-        // 勾选框切换事件：一旦改变状态，立刻重新扫描
         showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> scanApps());
 
         scanApps();
     }
 
+    private void jumpToSettings(String packageName) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + packageName));
+            startActivity(intent);
+            Toast.makeText(this, "请在系统界面点击【卸载】", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "无法打开设置页", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void scanApps() {
         refreshButton.setEnabled(false);
         refreshButton.setText("扫描中...");
+        
+        apps.clear();
+        allApps.clear();
+        adapter.notifyDataSetChanged();
 
         new Thread(() -> {
             PackageManager pm = getPackageManager();
@@ -128,10 +135,8 @@ public class MainActivity extends Activity {
             boolean isShowAll = showAllCheckbox.isChecked();
 
             for (ApplicationInfo ai : installed) {
-                // 过滤掉系统自带应用
                 if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
 
-                // 必须有启动入口（排除后台服务）
                 Intent launch = pm.getLaunchIntentForPackage(ai.packageName);
                 if (launch == null) continue;
 
@@ -149,8 +154,11 @@ public class MainActivity extends Activity {
 
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
 
-                // 核心逻辑：如果勾选了"显示全部"，或者 名字命中 或者 有VPN权限，则加入列表
-                if (!isShowAll && !isMatch && !hasVpnPermission) {
+                // 判断是否被系统“智能检测”出来
+                boolean isDetected = isMatch || hasVpnPermission;
+
+                // 如果没勾选“显示全部”，且没检测到，就跳过不显示
+                if (!isShowAll && !isDetected) {
                     continue;
                 }
 
@@ -161,20 +169,19 @@ public class MainActivity extends Activity {
                     icon = pm.getDefaultActivityIcon();
                 }
 
-                found.add(new AppInfo(label, ai.packageName, icon, launch));
+                // 把 isDetected 标记存入 AppInfo
+                found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
             Collections.sort(found, (a, b) -> Collator.getInstance().compare(a.label, b.label));
 
             runOnUiThread(() -> {
-                allApps.clear();
                 allApps.addAll(found);
-                
                 filterApps(searchBox.getText().toString());
 
                 refreshButton.setEnabled(true);
                 refreshButton.setText("刷新");
-                Toast.makeText(MainActivity.this, isShowAll ? "已显示全部应用" : "已智能过滤", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "刷新成功，共 " + allApps.size() + " 个应用", Toast.LENGTH_SHORT).show();
             });
         }).start();
     }
@@ -200,12 +207,14 @@ public class MainActivity extends Activity {
         final String packageName;
         final Drawable icon;
         final Intent launchIntent;
+        final boolean isDetected; // 新增：记录是否被检测到
 
-        AppInfo(String label, String packageName, Drawable icon, Intent launchIntent) {
+        AppInfo(String label, String packageName, Drawable icon, Intent launchIntent, boolean isDetected) {
             this.label = label;
             this.packageName = packageName;
             this.icon = icon;
             this.launchIntent = launchIntent;
+            this.isDetected = isDetected;
         }
     }
 
@@ -224,13 +233,23 @@ public class MainActivity extends Activity {
                 row = LayoutInflater.from(MainActivity.this).inflate(R.layout.row_app, parent, false);
             }
             AppInfo app = apps.get(position);
+            
             ImageView iconView = row.findViewById(R.id.app_icon);
             TextView nameView = row.findViewById(R.id.app_name);
             TextView packageView = row.findViewById(R.id.app_package);
+            TextView checkMarkView = row.findViewById(R.id.check_mark); // 找到勾勾
 
             iconView.setImageDrawable(app.icon);
             nameView.setText(app.label);
             packageView.setText(app.packageName);
+
+            // 核心判断：如果是被智能检测出来的，就显示对勾，否则隐藏
+            if (app.isDetected) {
+                checkMarkView.setVisibility(View.VISIBLE);
+            } else {
+                checkMarkView.setVisibility(View.GONE);
+            }
+
             return row;
         }
     }
