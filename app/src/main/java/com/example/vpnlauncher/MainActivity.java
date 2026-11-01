@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,6 +23,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,8 +36,10 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
 
+    private LinearLayout rootLayout;
     private ListView listView;
     private Button refreshButton;
+    private Button themeButton;
     private EditText searchBox;
     private CheckBox showAllCheckbox;
     private AppAdapter adapter;
@@ -48,13 +52,18 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        rootLayout = findViewById(R.id.root_layout);
         listView = findViewById(R.id.list);
         refreshButton = findViewById(R.id.refresh);
+        themeButton = findViewById(R.id.theme_btn);
         searchBox = findViewById(R.id.search_box);
         showAllCheckbox = findViewById(R.id.show_all_checkbox);
 
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
+
+        // 换肤功能
+        themeButton.setOnClickListener(v -> showThemeDialog());
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
@@ -69,7 +78,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 【神级长按菜单：复制包名 / 应用信息 / 卸载】
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             String[] options = {"复制包名", "应用信息", "卸载应用"};
@@ -78,7 +86,6 @@ public class MainActivity extends Activity {
                     .setTitle(app.label)
                     .setItems(options, (dialog, which) -> {
                         if (which == 0) {
-                            // 复制包名
                             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                             ClipData clip = ClipData.newPlainText("Package Name", app.packageName);
                             if (clipboard != null) {
@@ -86,10 +93,8 @@ public class MainActivity extends Activity {
                                 Toast.makeText(this, "包名已复制: " + app.packageName, Toast.LENGTH_SHORT).show();
                             }
                         } else if (which == 1) {
-                            // 跳转应用信息
                             jumpToSettings(app.packageName);
                         } else if (which == 2) {
-                            // 卸载应用
                             try {
                                 Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
                                 uninstallIntent.setData(Uri.parse("package:" + app.packageName));
@@ -125,6 +130,25 @@ public class MainActivity extends Activity {
         showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> scanApps());
 
         scanApps();
+    }
+
+    // 弹窗选择颜色
+    private void showThemeDialog() {
+        String[] themes = {"护眼灰蓝 (默认)", "豆沙绿 (极度护眼)", "燕麦米黄 (温馨)", "夜间深灰 (适合深夜)"};
+        new AlertDialog.Builder(this)
+                .setTitle("选择一个舒适的背景色")
+                .setItems(themes, (dialog, which) -> {
+                    String colorHex;
+                    switch (which) {
+                        case 0: colorHex = "#F2F6FA"; break; // 灰蓝
+                        case 1: colorHex = "#E8F0E8"; break; // 豆沙绿
+                        case 2: colorHex = "#F9F6F0"; break; // 米黄
+                        case 3: colorHex = "#2C2C2C"; break; // 深灰
+                        default: colorHex = "#F2F6FA";
+                    }
+                    rootLayout.setBackgroundColor(Color.parseColor(colorHex));
+                })
+                .show();
     }
 
     private void jumpToSettings(String packageName) {
@@ -188,7 +212,6 @@ public class MainActivity extends Activity {
                 found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
-            // 【智能排序】：带 √ 的强制排在前面，其他的按拼音排
             Collections.sort(found, (a, b) -> {
                 if (a.isDetected != b.isDetected) {
                     return a.isDetected ? -1 : 1;
