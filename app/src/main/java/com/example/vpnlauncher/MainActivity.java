@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -70,17 +71,24 @@ public class MainActivity extends Activity {
                     .setTitle("卸载应用")
                     .setMessage("确定要卸载 " + app.label + " 吗？\n包名：" + app.packageName)
                     .setPositiveButton("卸载", (dialog, which) -> {
-                        Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
-                        uninstallIntent.setData(Uri.parse("package:" + app.packageName));
-                        startActivity(uninstallIntent);
-                        Toast.makeText(MainActivity.this, "卸载完成后请点击刷新", Toast.LENGTH_SHORT).show();
+                        try {
+                            Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
+                            uninstallIntent.setData(Uri.parse("package:" + app.packageName));
+                            startActivity(uninstallIntent);
+                            Toast.makeText(MainActivity.this, "卸载完成后，请点击右上角刷新", Toast.LENGTH_LONG).show();
+                        } catch (Exception e) {
+                            Toast.makeText(MainActivity.this, "系统限制直接卸载，已为您跳转设置页", Toast.LENGTH_SHORT).show();
+                            Intent detailsIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            detailsIntent.setData(Uri.parse("package:" + app.packageName));
+                            startActivity(detailsIntent);
+                        }
                     })
                     .setNegativeButton("取消", null)
                     .show();
             return true;
         });
 
-        // 搜索
+        // 搜索框实时过滤
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -92,7 +100,12 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
-        refreshButton.setOnClickListener(v -> scanApps());
+        // 刷新按钮
+        refreshButton.setOnClickListener(v -> {
+            searchBox.setText(""); 
+            scanApps();
+        });
+
         scanApps();
     }
 
@@ -105,15 +118,16 @@ public class MainActivity extends Activity {
             List<ApplicationInfo> installed = pm.getInstalledApplications(PackageManager.GET_META_DATA);
             List<AppInfo> found = new ArrayList<>();
 
-            // 扩充了常用代理软件的英文名
             String[] keywords = {"vpn", "代理", "proxy", "加速", "梯子", "翻墙", "clash", "v2ray", "ssr", "shadowsocks", "surfboard", "trojan"};
 
             for (ApplicationInfo ai : installed) {
+                // 核心修改：过滤掉系统应用
+                if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+
                 CharSequence labelCs = pm.getApplicationLabel(ai);
                 String label = labelCs == null ? ai.packageName : labelCs.toString();
                 String lowerLabel = label.toLowerCase(Locale.ROOT);
 
-                // 判断1：名字是否包含关键词
                 boolean isMatch = false;
                 for (String kw : keywords) {
                     if (lowerLabel.contains(kw)) {
@@ -122,10 +136,8 @@ public class MainActivity extends Activity {
                     }
                 }
 
-                // 判断2：是否申请了系统的 VPN 核心权限（BIND_VPN_SERVICE）
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
 
-                // 只要满足一个条件，就把它加进列表
                 if (!isMatch && !hasVpnPermission) {
                     continue;
                 }
@@ -146,13 +158,14 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 allApps.clear();
                 allApps.addAll(found);
-                filterApps(searchBox.getText().toString());
+                
+                apps.clear();
+                apps.addAll(allApps);
+                adapter.notifyDataSetChanged();
+
                 refreshButton.setEnabled(true);
                 refreshButton.setText("刷新");
-
-                if (allApps.isEmpty()) {
-                    Toast.makeText(this, "没有找到代理/VPN应用", Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(MainActivity.this, "已刷新应用列表", Toast.LENGTH_SHORT).show();
             });
         }).start();
     }
