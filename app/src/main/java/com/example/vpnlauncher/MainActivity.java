@@ -37,6 +37,7 @@ import java.util.Locale;
 public class MainActivity extends Activity {
 
     private LinearLayout rootLayout;
+    private TextView titleText; // 新增：用于控制标题颜色
     private ListView listView;
     private Button refreshButton;
     private Button themeButton;
@@ -53,6 +54,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         rootLayout = findViewById(R.id.root_layout);
+        titleText = findViewById(R.id.title_text); // 绑定标题
         listView = findViewById(R.id.list);
         refreshButton = findViewById(R.id.refresh);
         themeButton = findViewById(R.id.theme_btn);
@@ -62,10 +64,8 @@ public class MainActivity extends Activity {
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
 
-        // 换肤功能按钮
         themeButton.setOnClickListener(v -> showThemeDialog());
 
-        // 点击打开
         listView.setOnItemClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             if (app.launchIntent != null) {
@@ -79,7 +79,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 长按菜单
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             String[] options = {"复制包名", "应用信息", "卸载应用"};
@@ -110,7 +109,6 @@ public class MainActivity extends Activity {
             return true;
         });
 
-        // 搜索框监听
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -122,7 +120,6 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 刷新按钮
         refreshButton.setOnClickListener(v -> {
             if (searchBox.getText().length() > 0) {
                 searchBox.setText(""); 
@@ -136,21 +133,33 @@ public class MainActivity extends Activity {
         scanApps();
     }
 
-    // 弹窗选择加深后的颜色
+    // 【重要：换色同时智能改变字体颜色】
     private void showThemeDialog() {
-        String[] themes = {"莫兰迪灰蓝 (高级感)", "加深豆沙绿 (护眼)", "暖咖米黄 (温馨)", "夜间深灰 (不刺眼)"};
+        String[] themes = {"护眼灰蓝 (推荐)", "豆沙绿 (护眼)", "燕麦米黄 (温馨)", "夜间深灰 (不刺眼)"};
         new AlertDialog.Builder(this)
                 .setTitle("选择一个舒适的背景色")
                 .setItems(themes, (dialog, which) -> {
                     String colorHex;
+                    boolean isDark = false; // 判断是不是深色主题
+
                     switch (which) {
-                        case 0: colorHex = "#DCE7F0"; break; // 加深的灰蓝
-                        case 1: colorHex = "#DDEADE"; break; // 加深的豆沙绿
-                        case 2: colorHex = "#F4EFE1"; break; // 加深的米黄
-                        case 3: colorHex = "#303030"; break; // 夜间深灰
-                        default: colorHex = "#DCE7F0";
+                        case 0: colorHex = "#E6EDF2"; break; // 淡淡的灰蓝
+                        case 1: colorHex = "#E3ECE3"; break; // 淡淡的绿
+                        case 2: colorHex = "#F5EFE6"; break; // 淡淡的米黄
+                        case 3: colorHex = "#303030"; isDark = true; break; // 深色
+                        default: colorHex = "#E6EDF2";
                     }
+                    
                     rootLayout.setBackgroundColor(Color.parseColor(colorHex));
+                    
+                    // 如果是深色背景，标题和复选框文字变成白色；浅色背景就变回黑色。
+                    if (isDark) {
+                        titleText.setTextColor(Color.WHITE);
+                        showAllCheckbox.setTextColor(Color.WHITE);
+                    } else {
+                        titleText.setTextColor(Color.parseColor("#333333"));
+                        showAllCheckbox.setTextColor(Color.parseColor("#555555"));
+                    }
                 })
                 .show();
     }
@@ -216,7 +225,6 @@ public class MainActivity extends Activity {
                 found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
-            // 智能排序
             Collections.sort(found, (a, b) -> {
                 if (a.isDetected != b.isDetected) {
                     return a.isDetected ? -1 : 1;
@@ -227,7 +235,6 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 allApps.clear();
                 allApps.addAll(found);
-                
                 filterApps(searchBox.getText().toString());
                 listView.setSelectionFromTop(firstVisiblePosition, top);
 
