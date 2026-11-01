@@ -45,7 +45,6 @@ public class MainActivity extends Activity {
     private CheckBox showAllCheckbox;
     private AppAdapter adapter;
     
-    // 新增：记录当前是不是夜间模式
     private boolean isDarkMode = false;
 
     private final List<AppInfo> allApps = new ArrayList<>();
@@ -144,16 +143,15 @@ public class MainActivity extends Activity {
                     String colorHex;
                     
                     switch (which) {
-                        case 0: colorHex = "#D6E4F0"; isDarkMode = false; break; // 明显的灰蓝
-                        case 1: colorHex = "#CCE8CF"; isDarkMode = false; break; // 明显的浅绿
-                        case 2: colorHex = "#FCE8C8"; isDarkMode = false; break; // 明显的米黄
-                        case 3: colorHex = "#121212"; isDarkMode = true; break;  // 纯黑
+                        case 0: colorHex = "#D6E4F0"; isDarkMode = false; break;
+                        case 1: colorHex = "#CCE8CF"; isDarkMode = false; break;
+                        case 2: colorHex = "#FCE8C8"; isDarkMode = false; break;
+                        case 3: colorHex = "#121212"; isDarkMode = true; break;
                         default: colorHex = "#D6E4F0"; isDarkMode = false;
                     }
                     
                     rootLayout.setBackgroundColor(Color.parseColor(colorHex));
                     
-                    // 切换主题后，文字颜色也要跟着换
                     if (isDarkMode) {
                         titleText.setTextColor(Color.WHITE);
                         showAllCheckbox.setTextColor(Color.WHITE);
@@ -162,7 +160,6 @@ public class MainActivity extends Activity {
                         showAllCheckbox.setTextColor(Color.parseColor("#555555"));
                     }
                     
-                    // 通知列表重新绘制，让卡片里的字变色
                     adapter.notifyDataSetChanged();
                 })
                 .show();
@@ -297,22 +294,29 @@ public class MainActivity extends Activity {
             }
             AppInfo app = apps.get(position);
             
+            // 绑定新加的序号控件
+            TextView indexView = row.findViewById(R.id.tv_index);
             ImageView iconView = row.findViewById(R.id.app_icon);
             TextView nameView = row.findViewById(R.id.app_name);
             TextView packageView = row.findViewById(R.id.app_package);
             TextView checkMarkView = row.findViewById(R.id.check_mark);
 
+            // 设置序号：因为 position 是从 0 开始的，所以要 +1
+            indexView.setText(String.valueOf(position + 1));
+            
             iconView.setImageDrawable(app.icon);
             nameView.setText(app.label);
             packageView.setText(app.packageName);
 
-            // 【核心修改】：根据日间/夜间模式，动态改变名字和包名的颜色
+            // 根据日间/夜间模式，动态改变名字、包名、序号的字体颜色
             if (isDarkMode) {
-                nameView.setTextColor(Color.WHITE);               // 夜间模式字变纯白
-                packageView.setTextColor(Color.parseColor("#BBBBBB")); // 包名变亮灰色
+                nameView.setTextColor(Color.WHITE);
+                packageView.setTextColor(Color.parseColor("#BBBBBB"));
+                indexView.setTextColor(Color.parseColor("#BBBBBB")); // 夜间序号亮灰色
             } else {
-                nameView.setTextColor(Color.parseColor("#212121")); // 白天模式恢复深色
-                packageView.setTextColor(Color.parseColor("#757575")); // 包名恢复中灰色
+                nameView.setTextColor(Color.parseColor("#212121"));
+                packageView.setTextColor(Color.parseColor("#757575"));
+                indexView.setTextColor(Color.parseColor("#757575")); // 白天序号中灰色
             }
 
             if (app.isDetected) {
