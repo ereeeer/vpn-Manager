@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -33,6 +34,7 @@ public class MainActivity extends Activity {
     private ListView listView;
     private Button refreshButton;
     private EditText searchBox;
+    private CheckBox showAllCheckbox;
     private AppAdapter adapter;
     
     private final List<AppInfo> allApps = new ArrayList<>();
@@ -46,6 +48,7 @@ public class MainActivity extends Activity {
         listView = findViewById(R.id.list);
         refreshButton = findViewById(R.id.refresh);
         searchBox = findViewById(R.id.search_box);
+        showAllCheckbox = findViewById(R.id.show_all_checkbox);
 
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
@@ -64,31 +67,29 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 长按卸载
+        // 长按卸载（终极强制版）
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             new AlertDialog.Builder(this)
                     .setTitle("卸载应用")
-                    .setMessage("确定要卸载 " + app.label + " 吗？\n包名：" + app.packageName)
-                    .setPositiveButton("卸载", (dialog, which) -> {
+                    .setMessage("确定要卸载 " + app.label + " 吗？\n\n如果点击无反应，请选择跳转到系统设置手动卸载。")
+                    .setPositiveButton("直接卸载", (dialog, which) -> {
                         try {
                             Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
                             uninstallIntent.setData(Uri.parse("package:" + app.packageName));
                             startActivity(uninstallIntent);
-                            Toast.makeText(MainActivity.this, "卸载完成后，请点击右上角刷新", Toast.LENGTH_LONG).show();
                         } catch (Exception e) {
-                            Toast.makeText(MainActivity.this, "系统限制直接卸载，已为您跳转设置页", Toast.LENGTH_SHORT).show();
-                            Intent detailsIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                            detailsIntent.setData(Uri.parse("package:" + app.packageName));
-                            startActivity(detailsIntent);
+                            // 失败直接跳设置页
+                            jumpToSettings(app.packageName);
                         }
                     })
+                    .setNeutralButton("去设置页", (dialog, which) -> jumpToSettings(app.packageName))
                     .setNegativeButton("取消", null)
                     .show();
             return true;
         });
 
-        // 搜索框实时过滤
+        // 搜索框
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -100,29 +101,50 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 刷新按钮
+        // 刷新按钮（清空重绘）
         refreshButton.setOnClickListener(v -> {
             searchBox.setText(""); 
             scanApps();
         });
 
+        showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> scanApps());
+
         scanApps();
+    }
+
+    private void jumpToSettings(String packageName) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + packageName));
+            startActivity(intent);
+            Toast.makeText(this, "请在系统界面点击【卸载】", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "无法打开设置页", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void scanApps() {
         refreshButton.setEnabled(false);
         refreshButton.setText("扫描中...");
+        
+        // 刷新时先清空列表，给用户视觉反馈
+        apps.clear();
+        allApps.clear();
+        adapter.notifyDataSetChanged();
 
         new Thread(() -> {
             PackageManager pm = getPackageManager();
             List<ApplicationInfo> installed = pm.getInstalledApplications(PackageManager.GET_META_DATA);
             List<AppInfo> found = new ArrayList<>();
 
-            String[] keywords = {"vpn", "代理", "proxy", "加速", "梯子", "翻墙", "clash", "v2ray", "ssr", "shadowsocks", "surfboard", "trojan"};
+            String[] keywords = {"vpn", "代理", "proxy", "加速", "梯子", "翻墙", "clash", "v2ray", "ssr", "shadowsocks", "surfboard", "trojan", "roxi"};
+            boolean isShowAll = showAllCheckbox.isChecked();
 
             for (ApplicationInfo ai : installed) {
-                // 核心修改：过滤掉系统应用
                 if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+
+                Intent launch = pm.getLaunchIntentForPackage(ai.packageName);
+                if (launch == null) continue;
 
                 CharSequence labelCs = pm.getApplicationLabel(ai);
                 String label = labelCs == null ? ai.packageName : labelCs.toString();
@@ -138,11 +160,10 @@ public class MainActivity extends Activity {
 
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
 
-                if (!isMatch && !hasVpnPermission) {
+                if (!isShowAll && !isMatch && !hasVpnPermission) {
                     continue;
                 }
 
-                Intent launch = pm.getLaunchIntentForPackage(ai.packageName);
                 Drawable icon;
                 try {
                     icon = pm.getApplicationIcon(ai.packageName);
@@ -156,16 +177,12 @@ public class MainActivity extends Activity {
             Collections.sort(found, (a, b) -> Collator.getInstance().compare(a.label, b.label));
 
             runOnUiThread(() -> {
-                allApps.clear();
                 allApps.addAll(found);
-                
-                apps.clear();
-                apps.addAll(allApps);
-                adapter.notifyDataSetChanged();
+                filterApps(searchBox.getText().toString());
 
                 refreshButton.setEnabled(true);
                 refreshButton.setText("刷新");
-                Toast.makeText(MainActivity.this, "已刷新应用列表", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "刷新成功，共 " + allApps.size() + " 个应用", Toast.LENGTH_SHORT).show();
             });
         }).start();
     }
