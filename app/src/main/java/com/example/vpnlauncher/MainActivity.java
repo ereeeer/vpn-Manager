@@ -37,7 +37,7 @@ import java.util.Locale;
 public class MainActivity extends Activity {
 
     private LinearLayout rootLayout;
-    private TextView titleText; // 新增：用于控制标题颜色
+    private TextView titleText;
     private ListView listView;
     private Button refreshButton;
     private Button themeButton;
@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         rootLayout = findViewById(R.id.root_layout);
-        titleText = findViewById(R.id.title_text); // 绑定标题
+        titleText = findViewById(R.id.title_text); 
         listView = findViewById(R.id.list);
         refreshButton = findViewById(R.id.refresh);
         themeButton = findViewById(R.id.theme_btn);
@@ -133,26 +133,24 @@ public class MainActivity extends Activity {
         scanApps();
     }
 
-    // 【重要：换色同时智能改变字体颜色】
     private void showThemeDialog() {
-        String[] themes = {"护眼灰蓝 (推荐)", "豆沙绿 (护眼)", "燕麦米黄 (温馨)", "夜间深灰 (不刺眼)"};
+        String[] themes = {"明显灰蓝", "明显护眼绿", "明显米黄", "极致纯黑 (夜间)"};
         new AlertDialog.Builder(this)
-                .setTitle("选择一个舒适的背景色")
+                .setTitle("选择一个对比强烈的背景色")
                 .setItems(themes, (dialog, which) -> {
                     String colorHex;
-                    boolean isDark = false; // 判断是不是深色主题
+                    boolean isDark = false; 
 
                     switch (which) {
-                        case 0: colorHex = "#E6EDF2"; break; // 淡淡的灰蓝
-                        case 1: colorHex = "#E3ECE3"; break; // 淡淡的绿
-                        case 2: colorHex = "#F5EFE6"; break; // 淡淡的米黄
-                        case 3: colorHex = "#303030"; isDark = true; break; // 深色
-                        default: colorHex = "#E6EDF2";
+                        case 0: colorHex = "#D6E4F0"; break; // 明显的灰蓝
+                        case 1: colorHex = "#CCE8CF"; break; // 明显的浅绿
+                        case 2: colorHex = "#FCE8C8"; break; // 明显的米黄
+                        case 3: colorHex = "#121212"; isDark = true; break; // 纯黑
+                        default: colorHex = "#D6E4F0";
                     }
                     
                     rootLayout.setBackgroundColor(Color.parseColor(colorHex));
                     
-                    // 如果是深色背景，标题和复选框文字变成白色；浅色背景就变回黑色。
                     if (isDark) {
                         titleText.setTextColor(Color.WHITE);
                         showAllCheckbox.setTextColor(Color.WHITE);
