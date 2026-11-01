@@ -226,12 +226,18 @@ public class MainActivity extends Activity {
                 found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
+            // 排序（带 √ 的优先，然后按拼音）
             Collections.sort(found, (a, b) -> {
                 if (a.isDetected != b.isDetected) {
                     return a.isDetected ? -1 : 1;
                 }
                 return Collator.getInstance().compare(a.label, b.label);
             });
+
+            // 【核心修改】：排好序之后，立刻给每个App盖上“绝对序号”的钢印！
+            for (int i = 0; i < found.size(); i++) {
+                found.get(i).absoluteIndex = i + 1;
+            }
 
             runOnUiThread(() -> {
                 allApps.clear();
@@ -268,6 +274,7 @@ public class MainActivity extends Activity {
         final Drawable icon;
         final Intent launchIntent;
         final boolean isDetected;
+        int absoluteIndex; // 新增：绝对固定的序号
 
         AppInfo(String label, String packageName, Drawable icon, Intent launchIntent, boolean isDetected) {
             this.label = label;
@@ -294,29 +301,27 @@ public class MainActivity extends Activity {
             }
             AppInfo app = apps.get(position);
             
-            // 绑定新加的序号控件
             TextView indexView = row.findViewById(R.id.tv_index);
             ImageView iconView = row.findViewById(R.id.app_icon);
             TextView nameView = row.findViewById(R.id.app_name);
             TextView packageView = row.findViewById(R.id.app_package);
             TextView checkMarkView = row.findViewById(R.id.check_mark);
 
-            // 设置序号：因为 position 是从 0 开始的，所以要 +1
-            indexView.setText(String.valueOf(position + 1));
+            // 【核心修改】：显示那个固定的“绝对序号”，而不是当前列表的位置
+            indexView.setText(String.valueOf(app.absoluteIndex));
             
             iconView.setImageDrawable(app.icon);
             nameView.setText(app.label);
             packageView.setText(app.packageName);
 
-            // 根据日间/夜间模式，动态改变名字、包名、序号的字体颜色
             if (isDarkMode) {
                 nameView.setTextColor(Color.WHITE);
                 packageView.setTextColor(Color.parseColor("#BBBBBB"));
-                indexView.setTextColor(Color.parseColor("#BBBBBB")); // 夜间序号亮灰色
+                indexView.setTextColor(Color.parseColor("#BBBBBB"));
             } else {
                 nameView.setTextColor(Color.parseColor("#212121"));
                 packageView.setTextColor(Color.parseColor("#757575"));
-                indexView.setTextColor(Color.parseColor("#757575")); // 白天序号中灰色
+                indexView.setTextColor(Color.parseColor("#757575"));
             }
 
             if (app.isDetected) {
