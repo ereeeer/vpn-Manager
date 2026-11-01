@@ -2,6 +2,9 @@ package com.example.vpnlauncher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -66,22 +69,36 @@ public class MainActivity extends Activity {
             }
         });
 
+        // 【神级长按菜单：复制包名 / 应用信息 / 卸载】
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
+            String[] options = {"复制包名", "应用信息", "卸载应用"};
+            
             new AlertDialog.Builder(this)
-                    .setTitle("卸载应用")
-                    .setMessage("确定要卸载 " + app.label + " 吗？\n\n如果点击无反应，请选择跳转到系统设置手动卸载。")
-                    .setPositiveButton("直接卸载", (dialog, which) -> {
-                        try {
-                            Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
-                            uninstallIntent.setData(Uri.parse("package:" + app.packageName));
-                            startActivity(uninstallIntent);
-                        } catch (Exception e) {
+                    .setTitle(app.label)
+                    .setItems(options, (dialog, which) -> {
+                        if (which == 0) {
+                            // 复制包名
+                            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                            ClipData clip = ClipData.newPlainText("Package Name", app.packageName);
+                            if (clipboard != null) {
+                                clipboard.setPrimaryClip(clip);
+                                Toast.makeText(this, "包名已复制: " + app.packageName, Toast.LENGTH_SHORT).show();
+                            }
+                        } else if (which == 1) {
+                            // 跳转应用信息
                             jumpToSettings(app.packageName);
+                        } else if (which == 2) {
+                            // 卸载应用
+                            try {
+                                Intent uninstallIntent = new Intent(Intent.ACTION_DELETE);
+                                uninstallIntent.setData(Uri.parse("package:" + app.packageName));
+                                startActivity(uninstallIntent);
+                            } catch (Exception e) {
+                                jumpToSettings(app.packageName);
+                            }
                         }
                     })
-                    .setNeutralButton("去设置页", (dialog, which) -> jumpToSettings(app.packageName))
-                    .setNegativeButton("取消", null)
                     .show();
             return true;
         });
@@ -97,9 +114,7 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 刷新按钮
         refreshButton.setOnClickListener(v -> {
-            // 如果搜索框有字，刷新时清空搜索框；如果没字，保持不动
             if (searchBox.getText().length() > 0) {
                 searchBox.setText(""); 
             } else {
@@ -117,7 +132,6 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
             intent.setData(Uri.parse("package:" + packageName));
             startActivity(intent);
-            Toast.makeText(this, "请在系统界面点击【卸载】", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "无法打开设置页", Toast.LENGTH_SHORT).show();
         }
@@ -127,7 +141,6 @@ public class MainActivity extends Activity {
         refreshButton.setEnabled(false);
         refreshButton.setText("扫描中...");
 
-        // 核心魔法 1：在刷新前，记住当前列表滑到了第几个，以及偏移量
         int firstVisiblePosition = listView.getFirstVisiblePosition();
         View v = listView.getChildAt(0);
         int top = (v == null) ? 0 : v.getTop();
@@ -175,15 +188,19 @@ public class MainActivity extends Activity {
                 found.add(new AppInfo(label, ai.packageName, icon, launch, isDetected));
             }
 
-            Collections.sort(found, (a, b) -> Collator.getInstance().compare(a.label, b.label));
+            // 【智能排序】：带 √ 的强制排在前面，其他的按拼音排
+            Collections.sort(found, (a, b) -> {
+                if (a.isDetected != b.isDetected) {
+                    return a.isDetected ? -1 : 1;
+                }
+                return Collator.getInstance().compare(a.label, b.label);
+            });
 
             runOnUiThread(() -> {
                 allApps.clear();
                 allApps.addAll(found);
                 
                 filterApps(searchBox.getText().toString());
-
-                // 核心魔法 2：数据更新完后，瞬间滑动回刚才记住的位置
                 listView.setSelectionFromTop(firstVisiblePosition, top);
 
                 refreshButton.setEnabled(true);
