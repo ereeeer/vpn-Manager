@@ -66,11 +66,13 @@
         android:textSize="14sp"
         android:textColor="#555555" />
 
+    <!-- 这里是关键，把列表的默认背景去掉了 -->
     <ListView
         android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:background="@android:color/transparent"
         android:divider="@null"
         android:dividerHeight="0dp" />
 
