@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="#F2F6FA"> <!-- 默认护眼灰蓝 -->
 
     <!-- 顶部名字 -->
     <TextView
@@ -17,7 +18,7 @@
         android:paddingTop="16dp"
         android:paddingBottom="8dp" />
 
-    <!-- 搜索与刷新栏 -->
+    <!-- 搜索与操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -38,16 +39,26 @@
             android:padding="8dp"
             android:singleLine="true" />
 
+        <!-- 新增：调色板按钮 -->
+        <Button
+            android:id="@+id/theme_btn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:text="🎨"
+            android:textSize="18sp"
+            android:padding="0dp" />
+
         <Button
             android:id="@+id/refresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="4dp"
             android:text="刷新"
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- 新增：显示全部应用的开关 -->
+    <!-- 显示全部应用的开关 -->
     <CheckBox
         android:id="@+id/show_all_checkbox"
         android:layout_width="wrap_content"
