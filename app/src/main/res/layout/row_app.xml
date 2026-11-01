@@ -41,4 +41,16 @@
             android:textColor="#757575" />
     </LinearLayout>
 
+    <!-- 新增：用于显示检测结果的对勾 -->
+    <TextView
+        android:id="@+id/check_mark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="√"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#4CAF50"
+        android:layout_marginStart="8dp"
+        android:visibility="gone" />
+
 </LinearLayout>
