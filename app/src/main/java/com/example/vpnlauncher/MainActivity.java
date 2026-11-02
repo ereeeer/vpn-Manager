@@ -2,10 +2,12 @@ package com.example.vpnlauncher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -54,16 +56,27 @@ public class MainActivity extends Activity {
     private final List<AppInfo> allApps = new ArrayList<>();
     private final List<AppInfo> apps = new ArrayList<>();
 
-    // 存储收藏的包名
     private SharedPreferences prefs;
     private Set<String> favoritePackages;
+
+    // 监听系统卸载广播，实现自动刷新
+    private BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_PACKAGE_REMOVED.equals(intent.getAction())) {
+                boolean isReplacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+                if (!isReplacing) {
+                    runOnUiThread(() -> scanApps());
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 初始化本地存储
         prefs = getSharedPreferences("VpnManagerPrefs", MODE_PRIVATE);
         favoritePackages = new HashSet<>(prefs.getStringSet("favorites", new HashSet<>()));
 
@@ -96,7 +109,6 @@ public class MainActivity extends Activity {
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
             
-            // 动态菜单：根据当前是否收藏，显示收藏或取消收藏
             String favStr = app.isFavorite ? "取消收藏" : "⭐ 收藏置顶";
             String[] options = {favStr, "复制包名", "应用信息", "卸载应用"};
             
@@ -104,8 +116,7 @@ public class MainActivity extends Activity {
                     .setTitle(app.label)
                     .setItems(options, (dialog, which) -> {
                         if (which == 0) {
-                            // 切换收藏状态
-                            toggleFavorite(app.packageName, position);
+                            toggleFavorite(app.packageName);
                         } else if (which == 1) {
                             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                             ClipData clip = ClipData.newPlainText("Package Name", app.packageName);
@@ -150,11 +161,23 @@ public class MainActivity extends Activity {
 
         showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> scanApps());
 
+        IntentFilter filter = new IntentFilter(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addDataScheme("package");
+        registerReceiver(uninstallReceiver, filter);
+
         scanApps();
     }
 
-    // 处理收藏逻辑
-    private void toggleFavorite(String packageName, int position) {
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            unregisterReceiver(uninstallReceiver);
+        } catch (Exception ignored) {}
+    }
+
+    // 【修改：静默登顶】
+    private void toggleFavorite(String packageName) {
         if (favoritePackages.contains(packageName)) {
             favoritePackages.remove(packageName);
             Toast.makeText(this, "已取消收藏", Toast.LENGTH_SHORT).show();
@@ -162,15 +185,23 @@ public class MainActivity extends Activity {
             favoritePackages.add(packageName);
             Toast.makeText(this, "已加入收藏置顶", Toast.LENGTH_SHORT).show();
         }
-        // 保存到本地
         prefs.edit().putStringSet("favorites", favoritePackages).apply();
         
-        // 重新排序并刷新列表
+        for (AppInfo app : allApps) {
+            app.isFavorite = favoritePackages.contains(app.packageName);
+        }
+
+        // 记录当前屏幕停在哪，保证刷新时画面不抖动
+        int firstVisiblePosition = listView.getFirstVisiblePosition();
+        View v = listView.getChildAt(0);
+        int top = (v == null) ? 0 : v.getTop();
+
+        // 重新排序、更新序号
         sortAndAssignIndex();
         filterApps(searchBox.getText().toString());
         
-        // 尽量保持当前滑动位置
-        listView.setSelection(position);
+        // 瞬间锁住位置，不让你看到任何滑动动画
+        listView.setSelectionFromTop(firstVisiblePosition, top);
     }
 
     private void showThemeDialog() {
@@ -250,7 +281,6 @@ public class MainActivity extends Activity {
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
                 boolean isDetected = isMatch || hasVpnPermission;
                 
-                // 只要被收藏了，就算没检测到，也强制拉进列表
                 boolean isFav = favoritePackages.contains(ai.packageName);
 
                 if (!isShowAll && !isDetected && !isFav) {
@@ -264,7 +294,6 @@ public class MainActivity extends Activity {
                     icon = pm.getDefaultActivityIcon();
                 }
 
-                // 计算大小 (获取APK文件大小)
                 long sizeInBytes = 0;
                 try {
                     File apkFile = new File(ai.publicSourceDir);
@@ -280,31 +309,26 @@ public class MainActivity extends Activity {
                 allApps.addAll(found);
                 sortAndAssignIndex();
                 filterApps(searchBox.getText().toString());
+                
                 listView.setSelectionFromTop(firstVisiblePosition, top);
 
                 refreshButton.setEnabled(true);
                 refreshButton.setText("刷新");
-                Toast.makeText(MainActivity.this, "刷新成功，共 " + allApps.size() + " 个应用", Toast.LENGTH_SHORT).show();
             });
         }).start();
     }
 
-    // 抽离出来的排序逻辑
     private void sortAndAssignIndex() {
         Collections.sort(allApps, (a, b) -> {
-            // 1. 收藏的最优先
             if (a.isFavorite != b.isFavorite) {
                 return a.isFavorite ? -1 : 1;
             }
-            // 2. 带√的其次
             if (a.isDetected != b.isDetected) {
                 return a.isDetected ? -1 : 1;
             }
-            // 3. 按拼音排序
             return Collator.getInstance().compare(a.label, b.label);
         });
 
-        // 重新分配绝对序号
         for (int i = 0; i < allApps.size(); i++) {
             allApps.get(i).absoluteIndex = i + 1;
         }
@@ -332,7 +356,7 @@ public class MainActivity extends Activity {
         final Drawable icon;
         final Intent launchIntent;
         final boolean isDetected;
-        final boolean isFavorite;
+        boolean isFavorite; 
         final String sizeStr;
         int absoluteIndex; 
 
@@ -378,7 +402,6 @@ public class MainActivity extends Activity {
             packageView.setText(app.packageName);
             sizeView.setText(app.sizeStr);
 
-            // 显示或隐藏星星
             if (app.isFavorite) {
                 favoriteView.setVisibility(View.VISIBLE);
             } else {
