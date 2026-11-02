@@ -56,17 +56,34 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <CheckBox
-        android:id="@+id/show_all_checkbox"
-        android:layout_width="wrap_content"
+    <!-- 这里是修改点：把复选框和问号放在同一个横向布局里 -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:layout_marginStart="12dp"
         android:layout_marginTop="4dp"
-        android:text="显示手机内全部应用 (防漏网)"
-        android:textSize="14sp"
-        android:textColor="#555555" />
+        android:paddingEnd="12dp">
 
-    <!-- 这里是关键，把列表的默认背景去掉了 -->
+        <CheckBox
+            android:id="@+id/show_all_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="显示全部应用"
+            android:textSize="14sp"
+            android:textColor="#555555" />
+
+        <!-- 新增：问号提示按钮 -->
+        <TextView
+            android:id="@+id/tv_help"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" ❓ "
+            android:textSize="16sp"
+            android:padding="8dp" />
+    </LinearLayout>
+
     <ListView
         android:id="@+id/list"
         android:layout_width="match_parent"
