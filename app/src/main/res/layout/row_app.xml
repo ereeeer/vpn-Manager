@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/row_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:background="#66FFFFFF"
+    android:foreground="?android:attr/selectableItemBackground"
     android:layout_marginStart="16dp"
     android:layout_marginEnd="16dp"
     android:layout_marginTop="8dp"
@@ -80,9 +82,18 @@
                 android:textColor="#757575"
                 android:layout_marginStart="8dp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#4CAF50"
+            android:visibility="gone" />
     </LinearLayout>
 
-    <!-- 新增：用于手动标记为 VPN 的框 -->
     <TextView
         android:id="@+id/tv_mark_vpn"
         android:layout_width="wrap_content"
@@ -95,7 +106,6 @@
         android:layout_marginStart="8dp"
         android:visibility="gone" />
 
-    <!-- 原有的绿色对勾 -->
     <TextView
         android:id="@+id/check_mark"
         android:layout_width="wrap_content"
