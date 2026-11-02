@@ -32,11 +32,13 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="搜索应用名称..."
+            android:hint="搜索应用名称或包名..."
             android:textSize="14sp"
             android:background="@android:drawable/edit_text"
             android:padding="8dp"
-            android:singleLine="true" />
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionSearch" />
 
         <Button
             android:id="@+id/theme_btn"
@@ -56,7 +58,6 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- 这里是修改点：把复选框和问号放在同一个横向布局里 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -74,7 +75,6 @@
             android:textSize="14sp"
             android:textColor="#555555" />
 
-        <!-- 新增：问号提示按钮 -->
         <TextView
             android:id="@+id/tv_help"
             android:layout_width="wrap_content"
@@ -84,13 +84,28 @@
             android:padding="8dp" />
     </LinearLayout>
 
-    <ListView
-        android:id="@+id/list"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="@android:color/transparent"
-        android:divider="@null"
-        android:dividerHeight="0dp" />
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:divider="@null"
+            android:dividerHeight="0dp" />
+
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="正在扫描…"
+            android:textSize="15sp"
+            android:textColor="#555555" />
+    </FrameLayout>
 
 </LinearLayout>
