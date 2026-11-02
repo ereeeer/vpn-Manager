@@ -11,7 +11,6 @@
     android:layout_marginBottom="8dp"
     android:padding="16dp">
 
-    <!-- 序号 -->
     <TextView
         android:id="@+id/tv_index"
         android:layout_width="wrap_content"
@@ -41,7 +40,6 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- 收藏的星星，默认隐藏 -->
             <TextView
                 android:id="@+id/tv_favorite"
                 android:layout_width="wrap_content"
@@ -74,7 +72,6 @@
                 android:textSize="12sp"
                 android:textColor="#757575" />
 
-            <!-- 应用大小 -->
             <TextView
                 android:id="@+id/tv_size"
                 android:layout_width="wrap_content"
@@ -85,6 +82,20 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- 新增：用于手动标记为 VPN 的框 -->
+    <TextView
+        android:id="@+id/tv_mark_vpn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="[ + ]"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#888888"
+        android:padding="8dp"
+        android:layout_marginStart="8dp"
+        android:visibility="gone" />
+
+    <!-- 原有的绿色对勾 -->
     <TextView
         android:id="@+id/check_mark"
         android:layout_width="wrap_content"
