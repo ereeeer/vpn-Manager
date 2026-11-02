@@ -49,17 +49,18 @@ public class MainActivity extends Activity {
     private Button themeButton;
     private EditText searchBox;
     private CheckBox showAllCheckbox;
+    private TextView tvHelp; // 新增问号
     private AppAdapter adapter;
     
     private boolean isDarkMode = false;
-    private boolean isShowAll = false; // 记录当前是不是“显示全部”模式
+    private boolean isShowAll = false;
 
     private final List<AppInfo> allApps = new ArrayList<>();
     private final List<AppInfo> apps = new ArrayList<>();
 
     private SharedPreferences prefs;
     private Set<String> favoritePackages;
-    private Set<String> customVpnPackages; // 新增：手动标记为 VPN 的包名
+    private Set<String> customVpnPackages;
 
     private BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
         @Override
@@ -80,7 +81,7 @@ public class MainActivity extends Activity {
 
         prefs = getSharedPreferences("VpnManagerPrefs", MODE_PRIVATE);
         favoritePackages = new HashSet<>(prefs.getStringSet("favorites", new HashSet<>()));
-        customVpnPackages = new HashSet<>(prefs.getStringSet("custom_vpns", new HashSet<>())); // 初始化手动标记集合
+        customVpnPackages = new HashSet<>(prefs.getStringSet("custom_vpns", new HashSet<>()));
 
         rootLayout = findViewById(R.id.root_layout);
         titleText = findViewById(R.id.title_text); 
@@ -89,9 +90,19 @@ public class MainActivity extends Activity {
         themeButton = findViewById(R.id.theme_btn);
         searchBox = findViewById(R.id.search_box);
         showAllCheckbox = findViewById(R.id.show_all_checkbox);
+        tvHelp = findViewById(R.id.tv_help); // 绑定问号
 
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
+
+        // 问号点击事件
+        tvHelp.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("小提示")
+                    .setMessage("开启“显示全部应用”后，若发现没有被自动识别（没有绿色√）的 VPN 软件，可以直接点击其右侧的 [ + ] 按钮，它就会被永久收编到你的主列表中啦！")
+                    .setPositiveButton("我知道了", null)
+                    .show();
+        });
 
         themeButton.setOnClickListener(v -> showThemeDialog());
 
@@ -110,7 +121,6 @@ public class MainActivity extends Activity {
 
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             AppInfo app = apps.get(position);
-            
             String favStr = app.isFavorite ? "取消收藏" : "⭐ 收藏置顶";
             String[] options = {favStr, "复制包名", "应用信息", "卸载应用"};
             
@@ -162,7 +172,7 @@ public class MainActivity extends Activity {
         });
 
         showAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            isShowAll = isChecked; // 记录状态
+            isShowAll = isChecked;
             scanApps();
         });
 
@@ -181,12 +191,11 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
     }
 
-    // 点击 [+] 手动标记为 VPN
     private void markAsVpn(String packageName) {
         customVpnPackages.add(packageName);
         prefs.edit().putStringSet("custom_vpns", customVpnPackages).apply();
         Toast.makeText(this, "已成功收编为 VPN！", Toast.LENGTH_SHORT).show();
-        scanApps(); // 重新扫描，它就会带上绿√了
+        scanApps(); 
     }
 
     private void toggleFavorite(String packageName) {
@@ -231,9 +240,11 @@ public class MainActivity extends Activity {
                     if (isDarkMode) {
                         titleText.setTextColor(Color.WHITE);
                         showAllCheckbox.setTextColor(Color.WHITE);
+                        tvHelp.setTextColor(Color.WHITE);
                     } else {
                         titleText.setTextColor(Color.parseColor("#333333"));
                         showAllCheckbox.setTextColor(Color.parseColor("#555555"));
+                        tvHelp.setTextColor(Color.parseColor("#555555"));
                     }
                     
                     adapter.notifyDataSetChanged();
@@ -285,8 +296,6 @@ public class MainActivity extends Activity {
                 }
 
                 boolean hasVpnPermission = pm.checkPermission(android.Manifest.permission.BIND_VPN_SERVICE, ai.packageName) == PackageManager.PERMISSION_GRANTED;
-                
-                // 核心：只要满足 智能识别 或 被手动标记过，就是 Detected
                 boolean isDetected = isMatch || hasVpnPermission || customVpnPackages.contains(ai.packageName);
                 
                 boolean isFav = favoritePackages.contains(ai.packageName);
@@ -317,7 +326,6 @@ public class MainActivity extends Activity {
                 allApps.addAll(found);
                 sortAndAssignIndex();
                 filterApps(searchBox.getText().toString());
-                
                 listView.setSelectionFromTop(firstVisiblePosition, top);
 
                 refreshButton.setEnabled(true);
@@ -363,7 +371,7 @@ public class MainActivity extends Activity {
         final String packageName;
         final Drawable icon;
         final Intent launchIntent;
-        boolean isDetected; // 改成非 final，因为可能被手动标记
+        boolean isDetected; 
         boolean isFavorite; 
         final String sizeStr;
         int absoluteIndex; 
@@ -402,7 +410,7 @@ public class MainActivity extends Activity {
             TextView checkMarkView = row.findViewById(R.id.check_mark);
             TextView favoriteView = row.findViewById(R.id.tv_favorite);
             TextView sizeView = row.findViewById(R.id.tv_size);
-            TextView markVpnView = row.findViewById(R.id.tv_mark_vpn); // 新增的手动标记按钮
+            TextView markVpnView = row.findViewById(R.id.tv_mark_vpn); 
 
             indexView.setText(String.valueOf(app.absoluteIndex));
             
@@ -431,13 +439,11 @@ public class MainActivity extends Activity {
                 markVpnView.setTextColor(Color.parseColor("#888888"));
             }
 
-            // 核心逻辑：如果被识别或已手动标记，显示绿√，隐藏 [+] 框
             if (app.isDetected) {
                 checkMarkView.setVisibility(View.VISIBLE);
                 markVpnView.setVisibility(View.GONE);
             } else {
                 checkMarkView.setVisibility(View.GONE);
-                // 如果当前开启了“显示全部”，且它没被识别，才显示 [+] 供用户点击
                 if (isShowAll) {
                     markVpnView.setVisibility(View.VISIBLE);
                 } else {
@@ -445,7 +451,6 @@ public class MainActivity extends Activity {
                 }
             }
 
-            // 点击 [+] 标记按钮
             markVpnView.setOnClickListener(v -> markAsVpn(app.packageName));
 
             return row;
