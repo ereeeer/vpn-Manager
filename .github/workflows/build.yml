@@ -1,4 +1,4 @@
-name: Build VPN Manager APK
+name: Build VPN Launcher APK
 
 on:
   workflow_dispatch:
