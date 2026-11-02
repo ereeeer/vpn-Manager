@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
     private Button themeButton;
     private EditText searchBox;
     private CheckBox showAllCheckbox;
-    private TextView tvHelp; // 新增问号
+    private TextView tvHelp;
     private AppAdapter adapter;
     
     private boolean isDarkMode = false;
@@ -90,16 +90,16 @@ public class MainActivity extends Activity {
         themeButton = findViewById(R.id.theme_btn);
         searchBox = findViewById(R.id.search_box);
         showAllCheckbox = findViewById(R.id.show_all_checkbox);
-        tvHelp = findViewById(R.id.tv_help); // 绑定问号
+        tvHelp = findViewById(R.id.tv_help);
 
         adapter = new AppAdapter();
         listView.setAdapter(adapter);
 
-        // 问号点击事件
+        // 点问号显示详细说明书
         tvHelp.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
-                    .setTitle("小提示")
-                    .setMessage("开启“显示全部应用”后，若发现没有被自动识别（没有绿色√）的 VPN 软件，可以直接点击其右侧的 [ + ] 按钮，它就会被永久收编到你的主列表中啦！")
+                    .setTitle("使用说明")
+                    .setMessage("【智能识别】\n自动抓取包含 VPN、代理、加速等关键词，或拥有系统 VPN 权限的应用。\n\n【手动收编】\n勾选“显示全部应用”后，未被识别的软件右侧会出现 [+] 号。点击即可将其永久收编为 VPN。\n\n【收藏与排序】\n长按任意软件可“收藏置顶”。排序规则为：收藏 > 识别 > 名称首字母。\n\n【长按菜单】\n除了收藏，长按还能：复制包名、查看应用信息、直接卸载。\n\n【无感刷新】\n在手机里卸载软件后，返回本界面，列表会自动刷新。平时点“刷新”时，页面也会停留在当前位置，绝不乱跳。\n\n【主题换肤】\n点击搜索框右侧的 🎨 按钮，可切换四套护眼背景与夜间模式。")
                     .setPositiveButton("我知道了", null)
                     .show();
         });
