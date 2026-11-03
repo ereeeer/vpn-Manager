@@ -101,17 +101,12 @@
         android:padding="8dp"
         android:layout_marginStart="4dp"
         android:visibility="gone" />
-    <TextView
+    <!-- 完美的矢量绿勾 -->
+    <ImageView
         android:id="@+id/check_mark"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:text="✓"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:background="@drawable/bg_green_circle"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:src="@drawable/ic_check_circle"
         android:layout_marginStart="8dp"
         android:visibility="gone" />
     <TextView
