@@ -19,6 +19,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.LruCache;
 import android.view.LayoutInflater;
@@ -34,13 +35,18 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONObject;
+
 import java.io.File;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends Activity {
@@ -48,6 +54,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "VpnManagerPrefs";
     private static final String KEY_FAV = "favorites";
     private static final String KEY_CUSTOM = "custom_vpns";
+    private static final String KEY_MARKS = "app_marks"; // 新增：自定义标记 Map
     private static final String KEY_THEME = "theme_index";
     private static final String KEY_SHOW_ALL = "show_all";
     private static final String VPN_SERVICE_ACTION = "android.net.VpnService";
@@ -71,7 +78,6 @@ public class MainActivity extends Activity {
     private TextView tvHelp;
     private AppAdapter adapter;
 
-    // 图标缓存
     private final LruCache<String, Drawable> iconCache = new LruCache<>(150);
 
     private boolean isDarkMode = false;
@@ -85,6 +91,7 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs;
     private Set<String> favoritePackages = new HashSet<>();
     private Set<String> customVpnPackages = new HashSet<>();
+    private Map<String, String> appMarks = new HashMap<>();
 
     private final BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
         @Override
@@ -98,11 +105,12 @@ public class MainActivity extends Activity {
                 if (pkg != null) {
                     favoritePackages.remove(pkg);
                     customVpnPackages.remove(pkg);
+                    appMarks.remove(pkg);
                     saveSets();
                 }
-                scanApps(); // 卸载后刷新
+                scanApps();
             } else if (Intent.ACTION_PACKAGE_ADDED.equals(action)) {
-                scanApps(); // 安装后自动刷新
+                scanApps();
             }
         }
     };
@@ -115,6 +123,7 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         favoritePackages = new HashSet<>(prefs.getStringSet(KEY_FAV, Collections.emptySet()));
         customVpnPackages = new HashSet<>(prefs.getStringSet(KEY_CUSTOM, Collections.emptySet()));
+        loadMarks();
         isShowAll = prefs.getBoolean(KEY_SHOW_ALL, false);
 
         rootLayout = findViewById(R.id.root_layout);
@@ -143,56 +152,27 @@ public class MainActivity extends Activity {
 
         tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle("使用说明")
-                .setMessage("【智能识别】\n列出声明了系统 VPN 服务的应用，以及名称或包名包含 VPN、Clash、v2ray、WireGuard 等关键词的应用。\n\n"
-                        + "【手动收编】\n勾选「显示全部应用」后，未识别的软件右侧有 [+]。点一下永久收编。长按已收编项可选「取消收编」。\n\n"
-                        + "【收藏与排序】\n长按可收藏置顶，排序：收藏 > 已识别 > 名称。\n\n"
-                        + "【长按菜单】\n收藏、复制包名、应用信息、卸载。\n\n"
-                        + "【主题】\n点 🎨 切换背景，选择会记住。")
+                .setMessage("【点击】弹出操作菜单，不再直接启动。\n\n"
+                        + "【打标记】给软件打上标记（如：稳定、机场名）。一旦打上标记，它会自动被收编为 VPN。\n\n"
+                        + "【收藏与排序】长按可直接收藏置顶，排序：收藏 > 已识别/标记 > 名称。\n\n"
+                        + "【显示全部】勾选后可看到所有 App。")
                 .setPositiveButton("我知道了", null)
                 .show());
 
         themeButton.setOnClickListener(v -> showThemeDialog());
 
+        // 【改版核心】：短按弹出菜单，不再直接打开
         listView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= apps.size()) return;
             AppInfo app = apps.get(position);
-            if (app.launchIntent == null) {
-                Toast.makeText(this, "该应用没有可启动入口：" + app.label, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            try {
-                startActivity(app.launchIntent);
-            } catch (Exception e) {
-                Toast.makeText(this, "无法启动：" + app.label, Toast.LENGTH_SHORT).show();
-            }
+            showAppOptionsDialog(app);
         });
 
+        // 长按直接切换收藏，方便快捷
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= apps.size()) return true;
             AppInfo app = apps.get(position);
-            List<String> options = new ArrayList<>();
-            String optFav = app.isFavorite ? "取消收藏" : "⭐ 收藏置顶";
-            String optCopy = "复制包名";
-            String optInfo = "应用信息";
-            String optUnmark = "取消收编";
-            String optUninstall = "卸载应用";
-            options.add(optFav);
-            options.add(optCopy);
-            options.add(optInfo);
-            if (app.isCustom) options.add(optUnmark);
-            options.add(optUninstall);
-            String[] items = options.toArray(new String[0]);
-            new AlertDialog.Builder(this)
-                    .setTitle(app.label)
-                    .setItems(items, (dialog, which) -> {
-                        String pick = items[which];
-                        if (optFav.equals(pick)) toggleFavorite(app.packageName);
-                        else if (optCopy.equals(pick)) copyPackage(app.packageName);
-                        else if (optInfo.equals(pick)) jumpToSettings(app.packageName);
-                        else if (optUnmark.equals(pick)) unmarkVpn(app.packageName);
-                        else if (optUninstall.equals(pick)) confirmUninstall(app);
-                    })
-                    .show();
+            toggleFavorite(app.packageName);
             return true;
         });
 
@@ -230,25 +210,146 @@ public class MainActivity extends Activity {
         receiverRegistered = false;
     }
 
+    // 解析并加载标记
+    private void loadMarks() {
+        appMarks.clear();
+        String marksJson = prefs.getString(KEY_MARKS, "{}");
+        try {
+            JSONObject jsonObject = new JSONObject(marksJson);
+            Iterator<String> keys = jsonObject.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                appMarks.put(key, jsonObject.getString(key));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    // 保存标记、收藏、收编
     private void saveSets() {
+        JSONObject jsonObject = new JSONObject(appMarks);
         prefs.edit()
                 .putStringSet(KEY_FAV, new HashSet<>(favoritePackages))
                 .putStringSet(KEY_CUSTOM, new HashSet<>(customVpnPackages))
+                .putString(KEY_MARKS, jsonObject.toString())
                 .apply();
     }
 
-    private void markAsVpn(String packageName) {
-        customVpnPackages.add(packageName);
+    // 短按弹出的核心功能菜单
+    private void showAppOptionsDialog(AppInfo app) {
+        List<String> options = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+
+        // 1. 打开
+        options.add("🚀 打开应用");
+        actions.add(() -> {
+            if (app.launchIntent != null) {
+                try { startActivity(app.launchIntent); } 
+                catch (Exception e) { Toast.makeText(this, "无法启动", Toast.LENGTH_SHORT).show(); }
+            }
+        });
+
+        // 2. 打标记
+        options.add("🏷️ 添加/修改标记");
+        actions.add(() -> showMarkDialog(app));
+
+        // 3. 复制包名
+        options.add("📋 复制包名");
+        actions.add(() -> copyPackage(app.packageName));
+
+        // 4. 应用信息
+        options.add("⚙️ 应用信息");
+        actions.add(() -> jumpToSettings(app.packageName));
+
+        // 5. 取消收编
+        if (app.isCustom) {
+            options.add("❌ 取消收编");
+            actions.add(() -> unmarkVpn(app.packageName));
+        }
+
+        // 6. 卸载
+        options.add("🗑️ 卸载应用");
+        actions.add(() -> confirmUninstall(app));
+
+        String[] items = options.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+                .setTitle(app.label)
+                .setItems(items, (dialog, which) -> actions.get(which).run())
+                .show();
+    }
+
+    // 标记选择弹窗
+    private void showMarkDialog(AppInfo app) {
+        String[] marks = {"最低收费", "最高收费", "稳定", "下载速度快", "免费好用", "自建标记 (输入机场名等)"};
+        new AlertDialog.Builder(this)
+                .setTitle("选择或自定义标记")
+                .setItems(marks, (dialog, which) -> {
+                    if (which == 5) {
+                        showCustomMarkInput(app);
+                    } else {
+                        applyMark(app.packageName, marks[which]);
+                    }
+                })
+                .show();
+    }
+
+    // 自定义标记输入框
+    private void showCustomMarkInput(AppInfo app) {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setHint("输入标记，如：XX机场、自用");
+        if (app.mark != null) {
+            input.setText(app.mark);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("自定义标记")
+                .setView(input)
+                .setPositiveButton("保存", (dialog, which) -> {
+                    String text = input.getText().toString().trim();
+                    if (!text.isEmpty()) applyMark(app.packageName, text);
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    // 应用标记（打上标记后，自动归为 VPN / 收编）
+    private void applyMark(String packageName, String mark) {
+        appMarks.put(packageName, mark);
+        customVpnPackages.add(packageName); // 打标记自动视为收编
         saveSets();
-        Toast.makeText(this, "已收编为 VPN", Toast.LENGTH_SHORT).show();
-        scanApps();
+        for (AppInfo a : allApps) {
+            if (a.packageName.equals(packageName)) {
+                a.mark = mark;
+                a.isCustom = true;
+            }
+        }
+        sortAndAssignIndex();
+        filterApps(searchBox.getText().toString());
+        Toast.makeText(this, "已标记为：" + mark + "（已自动收编）", Toast.LENGTH_SHORT).show();
     }
 
     private void unmarkVpn(String packageName) {
         customVpnPackages.remove(packageName);
+        appMarks.remove(packageName); // 取消收编顺便清空标记
         saveSets();
-        Toast.makeText(this, "已取消收编", Toast.LENGTH_SHORT).show();
         scanApps();
+    }
+
+    private void toggleFavorite(String packageName) {
+        if (favoritePackages.contains(packageName)) {
+            favoritePackages.remove(packageName);
+        } else {
+            favoritePackages.add(packageName);
+        }
+        saveSets();
+        for (AppInfo a : allApps) {
+            a.isFavorite = favoritePackages.contains(a.packageName);
+        }
+        int first = listView.getFirstVisiblePosition();
+        View topView = listView.getChildAt(0);
+        int top = topView == null ? 0 : topView.getTop();
+        sortAndAssignIndex();
+        filterApps(searchBox.getText().toString());
+        listView.setSelectionFromTop(first, top);
     }
 
     private void copyPackage(String packageName) {
@@ -273,26 +374,6 @@ public class MainActivity extends Activity {
                     }
                 })
                 .show();
-    }
-
-    private void toggleFavorite(String packageName) {
-        if (favoritePackages.contains(packageName)) {
-            favoritePackages.remove(packageName);
-            Toast.makeText(this, "已取消收藏", Toast.LENGTH_SHORT).show();
-        } else {
-            favoritePackages.add(packageName);
-            Toast.makeText(this, "已加入收藏置顶", Toast.LENGTH_SHORT).show();
-        }
-        saveSets();
-        for (AppInfo app : allApps) {
-            app.isFavorite = favoritePackages.contains(app.packageName);
-        }
-        int first = listView.getFirstVisiblePosition();
-        View topView = listView.getChildAt(0);
-        int top = topView == null ? 0 : topView.getTop();
-        sortAndAssignIndex();
-        filterApps(searchBox.getText().toString());
-        listView.setSelectionFromTop(first, top);
     }
 
     private void showThemeDialog() {
@@ -336,6 +417,7 @@ public class MainActivity extends Activity {
         final int generation = ++scanGeneration;
         final Set<String> favSnap = new HashSet<>(favoritePackages);
         final Set<String> customSnap = new HashSet<>(customVpnPackages);
+        final Map<String, String> marksSnap = new HashMap<>(appMarks);
         final boolean showAll = isShowAll;
         final String self = getPackageName();
 
@@ -382,10 +464,14 @@ public class MainActivity extends Activity {
 
                     CharSequence labelCs = pm.getApplicationLabel(ai);
                     String label = labelCs == null ? pkg : labelCs.toString();
+                    
+                    String mark = marksSnap.get(pkg);
                     boolean isAuto = vpnPackages.contains(pkg) || matchesKeyword(label, pkg);
                     boolean isCustom = customSnap.contains(pkg);
                     boolean isFav = favSnap.contains(pkg);
-                    if (!showAll && !isAuto && !isCustom && !isFav) continue;
+                    
+                    // 核心逻辑：如果被打上了标记（mark不为空），也默认强制显示
+                    if (!showAll && !isAuto && !isCustom && !isFav && mark == null) continue;
 
                     Drawable icon = iconCache.get(pkg);
                     if (icon == null) {
@@ -396,7 +482,7 @@ public class MainActivity extends Activity {
                         }
                         iconCache.put(pkg, icon);
                     }
-                    found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, formatSize(ai)));
+                    found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, mark, formatSize(ai)));
                 }
             }
 
@@ -471,13 +557,14 @@ public class MainActivity extends Activity {
         final Drawable icon;
         final Intent launchIntent;
         final boolean isAutoDetected;
-        final boolean isCustom;
+        boolean isCustom;
         boolean isFavorite;
+        String mark; // 标记
         final String sizeStr;
         int absoluteIndex;
 
         AppInfo(String label, String packageName, Drawable icon, Intent launchIntent,
-                boolean isAutoDetected, boolean isCustom, boolean isFavorite, String sizeStr) {
+                boolean isAutoDetected, boolean isCustom, boolean isFavorite, String mark, String sizeStr) {
             this.label = label;
             this.packageName = packageName;
             this.icon = icon;
@@ -485,11 +572,12 @@ public class MainActivity extends Activity {
             this.isAutoDetected = isAutoDetected;
             this.isCustom = isCustom;
             this.isFavorite = isFavorite;
+            this.mark = mark;
             this.sizeStr = sizeStr;
         }
 
         boolean isDetected() {
-            return isAutoDetected || isCustom;
+            return isAutoDetected || isCustom || mark != null;
         }
     }
 
@@ -508,11 +596,11 @@ public class MainActivity extends Activity {
                 holder.index = convertView.findViewById(R.id.tv_index);
                 holder.icon = convertView.findViewById(R.id.app_icon);
                 holder.name = convertView.findViewById(R.id.app_name);
-                holder.pkg = convertView.findViewById(R.id.app_package);
+                holder.mark = convertView.findViewById(R.id.tv_custom_mark);
                 holder.check = convertView.findViewById(R.id.check_mark);
                 holder.fav = convertView.findViewById(R.id.tv_favorite);
                 holder.size = convertView.findViewById(R.id.tv_size);
-                holder.mark = convertView.findViewById(R.id.tv_mark_vpn);
+                holder.plus = convertView.findViewById(R.id.tv_mark_vpn);
                 convertView.setTag(holder);
             } else {
                 holder = (ViewHolder) convertView.getTag();
@@ -522,9 +610,15 @@ public class MainActivity extends Activity {
             holder.index.setText(String.valueOf(app.absoluteIndex));
             holder.icon.setImageDrawable(app.icon);
             holder.name.setText(app.label);
-            holder.pkg.setText(app.packageName);
             holder.size.setText(app.sizeStr);
             holder.fav.setVisibility(app.isFavorite ? View.VISIBLE : View.GONE);
+            
+            if (app.mark != null && !app.mark.isEmpty()) {
+                holder.mark.setText("[" + app.mark + "]");
+                holder.mark.setVisibility(View.VISIBLE);
+            } else {
+                holder.mark.setVisibility(View.GONE);
+            }
             
             holder.root.setBackgroundColor(isDarkMode
                     ? Color.parseColor("#2C2C2C")
@@ -532,36 +626,31 @@ public class MainActivity extends Activity {
 
             if (isDarkMode) {
                 holder.name.setTextColor(Color.WHITE);
-                holder.pkg.setTextColor(Color.parseColor("#BDBDBD"));
-                holder.index.setTextColor(Color.parseColor("#BDBDBD"));
                 holder.size.setTextColor(Color.parseColor("#BDBDBD"));
-                holder.mark.setTextColor(Color.parseColor("#E0E0E0"));
+                holder.index.setTextColor(Color.parseColor("#BDBDBD"));
+                holder.plus.setTextColor(Color.parseColor("#E0E0E0"));
             } else {
                 holder.name.setTextColor(Color.parseColor("#212121"));
-                holder.pkg.setTextColor(Color.parseColor("#757575"));
-                holder.index.setTextColor(Color.parseColor("#757575"));
                 holder.size.setTextColor(Color.parseColor("#757575"));
-                holder.mark.setTextColor(Color.parseColor("#888888"));
+                holder.index.setTextColor(Color.parseColor("#757575"));
+                holder.plus.setTextColor(Color.parseColor("#888888"));
             }
 
             if (app.isDetected()) {
                 holder.check.setVisibility(View.VISIBLE);
-                holder.mark.setVisibility(View.GONE);
-                holder.mark.setOnClickListener(null);
+                holder.plus.setVisibility(View.GONE);
+                holder.plus.setOnClickListener(null);
             } else if (isShowAll) {
                 holder.check.setVisibility(View.GONE);
-                holder.mark.setVisibility(View.VISIBLE);
-                holder.mark.setOnClickListener(v -> markAsVpn(app.packageName));
+                holder.plus.setVisibility(View.VISIBLE);
+                holder.plus.setOnClickListener(v -> applyMark(app.packageName, "手动收编"));
             } else {
                 holder.check.setVisibility(View.GONE);
-                holder.mark.setVisibility(View.GONE);
-                holder.mark.setOnClickListener(null);
+                holder.plus.setVisibility(View.GONE);
+                holder.plus.setOnClickListener(null);
             }
 
-            holder.fav.setOnClickListener(v -> {
-                toggleFavorite(app.packageName);
-                holder.fav.setVisibility(app.isFavorite ? View.VISIBLE : View.GONE);
-            });
+            holder.fav.setOnClickListener(v -> toggleFavorite(app.packageName));
 
             return convertView;
         }
@@ -572,10 +661,10 @@ public class MainActivity extends Activity {
         TextView index;
         ImageView icon;
         TextView name;
-        TextView pkg;
+        TextView mark;
         TextView check;
         TextView fav;
         TextView size;
-        TextView mark;
+        TextView plus;
     }
-}
+                          }
