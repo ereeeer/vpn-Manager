@@ -749,4 +749,4 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static clas
+    private static clas        
