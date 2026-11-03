@@ -139,3 +139,220 @@
         android:textColor="#C0C8D8"
         android:layout_marginStart="6dp" />
 </LinearLayout>
+
+private GradientDrawable roundDrawable(int color, int stroke, int radius) {
+        GradientDrawable drawable = new GradientDrawable(); drawable.setColor(color); drawable.setCornerRadius(radius);
+        if (stroke != Color.TRANSPARENT) drawable.setStroke(dp(1), stroke);
+        return drawable;
+    }
+
+    private GradientDrawable circleDrawable(int color) {
+        GradientDrawable drawable = new GradientDrawable(); drawable.setShape(GradientDrawable.OVAL); drawable.setColor(color); return drawable;
+    }
+
+    private int dp(float value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }
+
+    private void jumpToSettings(String packageName) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + packageName));
+            startActivity(intent);
+        } catch (Exception e) { Toast.makeText(this, "无法打开设置页", Toast.LENGTH_SHORT).show(); }
+    }
+
+    private void scanApps() {
+        final int generation = ++scanGeneration;
+        final Set<String> favSnap = new HashSet<>(favoritePackages);
+        final Set<String> customSnap = new HashSet<>(customVpnPackages);
+        final Map<String, String> marksSnap = new HashMap<>(appMarks);
+        final Set<String> virtualSnap = new HashSet<>(virtualAirports);
+        final boolean showAll = isShowAll;
+        final String self = getPackageName();
+        emptyView.setText("正在扫描…");
+        int first = listView.getFirstVisiblePosition();
+        View topView = listView.getChildAt(0);
+        int top = topView == null ? 0 : topView.getTop();
+
+        Thread scanThread = new Thread(() -> {
+            List<AppInfo> found = new ArrayList<>();
+            String scanError = null;
+            try {
+                PackageManager pm = getPackageManager();
+                Set<String> vpnPackages = new HashSet<>();
+                List<ResolveInfo> vpnServices = pm.queryIntentServices(new Intent(VPN_SERVICE_ACTION), 0);
+                if (vpnServices != null) {
+                    for (ResolveInfo ri : vpnServices) {
+                        if (ri.serviceInfo != null) vpnPackages.add(ri.serviceInfo.packageName);
+                    }
+                }
+                Intent launcher = new Intent(Intent.ACTION_MAIN);
+                launcher.addCategory(Intent.CATEGORY_LAUNCHER);
+                List<ResolveInfo> activities = pm.queryIntentActivities(launcher, 0);
+                Set<String> seen = new HashSet<>();
+                if (activities != null) {
+                    for (ResolveInfo ri : activities) {
+                        if (ri.activityInfo == null) continue;
+                        String pkg = ri.activityInfo.packageName;
+                        if (!seen.add(pkg) || self.equals(pkg)) continue;
+                        ApplicationInfo ai;
+                        try { ai = pm.getApplicationInfo(pkg, 0); } catch (PackageManager.NameNotFoundException e) { continue; }
+                        if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
+                        Intent launch = pm.getLaunchIntentForPackage(pkg);
+                        if (launch == null) continue;
+                        CharSequence labelCs = pm.getApplicationLabel(ai);
+                        String label = labelCs == null ? pkg : labelCs.toString();
+                        String mark = marksSnap.get(pkg);
+                        boolean isAuto = vpnPackages.contains(pkg) || matchesKeyword(label, pkg);
+                        boolean isCustom = customSnap.contains(pkg);
+                        boolean isFav = favSnap.contains(pkg);
+                        if (!showAll && !isAuto && !isCustom && !isFav && mark == null) continue;
+                        Drawable icon = iconCache.get(pkg);
+                        if (icon == null) {
+                            try { icon = pm.getApplicationIcon(ai); } catch (Exception e) { icon = pm.getDefaultActivityIcon(); }
+                            if (icon != null) iconCache.put(pkg, icon);
+                        }
+                        found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, mark, formatSize(ai), false));
+                    }
+                }
+                for (String airportName : virtualSnap) {
+                    String fakePkg = virtualPackageKey(airportName);
+                    Drawable icon = pm.getDefaultActivityIcon();
+                    boolean isFav = favSnap.contains(fakePkg);
+                    found.add(new AppInfo(airportName, fakePkg, icon, null, false, true, isFav, "机场", "自建", true));
+                }
+            } catch (Exception e) { scanError = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage()); }
+            final String error = scanError; final List<AppInfo> result = found;
+            runOnUiThread(() -> {
+                if (generation != scanGeneration || isFinishing() || isDestroyed()) return;
+                if (listView.getAdapter() == null) return;
+                allApps.clear(); allApps.addAll(result); sortAndAssignIndex();
+                filterApps(searchBox.getText().toString());
+                listView.post(() -> listView.setSelectionFromTop(first, top));
+                if (error != null) emptyView.setText("扫描失败：" + error + "\n请检查应用可见性权限或稍后重试");
+                else if (result.isEmpty()) emptyView.setText(showAll ? "没有可启动的第三方应用" : "没有识别到 VPN 应用\n勾选「显示全部应用」后，可手动收编");
+                else if (apps.isEmpty()) emptyView.setText("没有找到匹配的应用");
+            });
+        }, "VpnAppScanner");
+        scanThread.setDaemon(true);
+        scanThread.start();
+    }
+
+    private static boolean matchesKeyword(String label, String packageName) {
+        String lowerLabel = label.toLowerCase(Locale.ROOT); String lowerPkg = packageName.toLowerCase(Locale.ROOT);
+        for (String kw : KEYWORDS) if (lowerLabel.contains(kw) || lowerPkg.contains(kw)) return true;
+        return false;
+    }
+
+    private static String formatSize(ApplicationInfo ai) {
+        long size = 0;
+        try {
+            if (ai.publicSourceDir != null) size += new File(ai.publicSourceDir).length();
+            if (ai.splitSourceDirs != null) for (String split : ai.splitSourceDirs) size += new File(split).length();
+        } catch (Exception ignored) {}
+        return String.format(Locale.getDefault(), "%.1f MB", size / (1024.0 * 1024.0));
+    }
+
+    private void sortAndAssignIndex() {
+        Collections.sort(allApps, (a, b) -> {
+            if (a.isFavorite != b.isFavorite) return a.isFavorite ? -1 : 1;
+            if (a.isDetected() != b.isDetected()) return a.isDetected() ? -1 : 1;
+            return Collator.getInstance().compare(a.label, b.label);
+        });
+        for (int i = 0; i < allApps.size(); i++) allApps.get(i).absoluteIndex = i + 1;
+    }
+
+    private void filterApps(String query) {
+        apps.clear();
+        if (query == null || query.isEmpty()) apps.addAll(allApps);
+        else {
+            String lowerQuery = query.toLowerCase(Locale.ROOT);
+            for (AppInfo app : allApps) if (app.label.toLowerCase(Locale.ROOT).contains(lowerQuery) || app.packageName.toLowerCase(Locale.ROOT).contains(lowerQuery)) apps.add(app);
+        }
+        adapter.notifyDataSetChanged();
+        if (apps.isEmpty() && allApps.size() > 0) emptyView.setText("没有找到匹配的应用");
+    }
+
+    private static class AppInfo {
+        final String label, packageName, sizeStr; final Drawable icon; final Intent launchIntent; final boolean isAutoDetected, isVirtual;
+        boolean isCustom, isFavorite; String mark; int absoluteIndex;
+        AppInfo(String label, String packageName, Drawable icon, Intent launchIntent, boolean isAutoDetected, boolean isCustom, boolean isFavorite, String mark, String sizeStr, boolean isVirtual) {
+            this.label = label; this.packageName = packageName; this.icon = icon; this.launchIntent = launchIntent; this.isAutoDetected = isAutoDetected; this.isCustom = isCustom; this.isFavorite = isFavorite; this.mark = mark; this.sizeStr = sizeStr; this.isVirtual = isVirtual;
+        }
+        boolean isDetected() { return isAutoDetected || isCustom || mark != null || isVirtual; }
+    }
+
+    private class AppAdapter extends BaseAdapter {
+        @Override public int getCount() { return apps.size(); }
+        @Override public Object getItem(int position) { return apps.get(position); }
+        @Override public long getItemId(int position) { return position; }
+        @Override public View getView(int position, View convertView, ViewGroup parent) {
+            ViewHolder holder;
+            if (convertView == null) {
+                convertView = LayoutInflater.from(MainActivity.this).inflate(R.layout.row_app, parent, false);
+                holder = new ViewHolder();
+                holder.root = convertView.findViewById(R.id.row_root); holder.index = convertView.findViewById(R.id.tv_index); holder.icon = convertView.findViewById(R.id.app_icon); holder.name = convertView.findViewById(R.id.app_name); holder.mark = convertView.findViewById(R.id.tv_custom_mark); holder.check = convertView.findViewById(R.id.check_mark); holder.fav = convertView.findViewById(R.id.tv_favorite); holder.size = convertView.findViewById(R.id.tv_size); holder.plus = convertView.findViewById(R.id.tv_mark_vpn); holder.arrow = convertView.findViewById(R.id.tv_arrow);
+                convertView.setTag(holder);
+            } else holder = (ViewHolder) convertView.getTag();
+            AppInfo app = apps.get(position); ThemeColors theme = currentTheme;
+            
+            holder.index.setText(String.valueOf(app.absoluteIndex)); 
+            holder.index.setTextColor(theme.secondary); 
+            holder.index.setBackground(roundDrawable(theme.indexBackground, Color.TRANSPARENT, dp(12))); // 序号变成圆角胶囊
+            
+            if (app.isVirtual) holder.icon.setImageResource(android.R.drawable.ic_menu_compass); else holder.icon.setImageDrawable(app.icon);
+            
+            holder.name.setText(app.label); 
+            holder.name.setTextColor(theme.text); 
+            holder.size.setText(app.sizeStr); 
+            holder.size.setTextColor(theme.secondary); 
+            holder.fav.setVisibility(app.isFavorite ? View.VISIBLE : View.GONE); 
+            holder.arrow.setTextColor(theme.secondary);
+            
+            if (app.mark != null && !app.mark.isEmpty()) { holder.mark.setText(app.mark); holder.mark.setVisibility(View.VISIBLE); } else holder.mark.setVisibility(View.GONE);
+            
+            // 卡片背景：使用主题色，并带上极细的描边，形成玻璃感
+            holder.root.setBackground(roundDrawable(theme.card, theme.cardStroke, dp(20)));
+            
+            if (app.isDetected()) {
+                holder.check.setVisibility(View.VISIBLE); 
+                holder.plus.setVisibility(View.GONE); 
+                holder.plus.setOnClickListener(null);
+            } else if (isShowAll) {
+                holder.check.setVisibility(View.GONE); 
+                holder.plus.setTextColor(theme.accent); 
+                holder.plus.setVisibility(View.VISIBLE); 
+                holder.plus.setOnClickListener(v -> applyMark(app.packageName, "手动收编"));
+            } else { 
+                holder.check.setVisibility(View.GONE); 
+                holder.plus.setVisibility(View.GONE); 
+                holder.plus.setOnClickListener(null); 
+            }
+            
+            holder.fav.setOnClickListener(v -> toggleFavorite(app.packageName));
+            return convertView;
+        }
+    }
+
+    private static class ViewHolder { LinearLayout root; TextView index, name, mark, check, fav, size, plus, arrow; ImageView icon; }
+
+    private static class ThemeColors {
+        final int backgroundStart, backgroundEnd, card, cardStroke, text, secondary, accent, searchBackground, indexBackground; final boolean dark;
+        ThemeColors(int start, int end, int card, int stroke, int text, int secondary, int accent, int search, int index, boolean dark) {
+            this.backgroundStart = start; this.backgroundEnd = end; this.card = card; this.cardStroke = stroke; this.text = text; this.secondary = secondary; this.accent = accent; this.searchBackground = search; this.indexBackground = index; this.dark = dark;
+        }
+        static final ThemeColors[] THEMES = {
+            // 1. 渐变蓝
+            new ThemeColors(0xFFEAF3FF, 0xFFD8E8FF, 0xF7FFFFFF, 0xFFDCE8FA, 0xFF172B4D, 0xFF7889A8, 0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false),
+            // 2. 深色夜间 (背景改为深海蓝，卡片改为深空灰蓝，对比极强)
+            new ThemeColors(0xFF10182B, 0xFF1D2A45, 0xFF24304A, 0xFF35425E, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF28344E, 0xFF35425E, true),
+            // 3. 护眼绿
+            new ThemeColors(0xFFEAF3E7, 0xFFDCEBDD, 0xF9FAFFF7, 0xFFD5E5D1, 0xFF304B37, 0xFF718875, 0xFF548B5B, 0xF9FFFFFF, 0xFFE5F0E1, false),
+            // 4. 薰衣草紫
+            new ThemeColors(0xFFF3ECFF, 0xFFE7DCFA, 0xFAFFFFFF, 0xFFE2D8F2, 0xFF3F315B, 0xFF82769B, 0xFF8062C9, 0xFAFFFFFF, 0xFFEDE5FF, false),
+            // 5. 暖橙米色
+            new ThemeColors(0xFFFFF5E6, 0xFFFFE7C8, 0xFAFFFCF6, 0xFFF0DFC8, 0xFF57432E, 0xFF927D65, 0xFFC17A32, 0xFAFFFFFF, 0xFFFFEED8, false),
+            // 6. 薄荷青
+            new ThemeColors(0xFFE8F7F3, 0xFFD4EEE8, 0xFAFFFFFF, 0xFFD6EAE4, 0xFF285248, 0xFF718F87, 0xFF278F82, 0xFAFFFFFF, 0xFFDFF2EC, false)
+        };
+    }
+}
