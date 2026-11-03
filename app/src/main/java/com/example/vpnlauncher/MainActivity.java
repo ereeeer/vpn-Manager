@@ -54,7 +54,8 @@ public class MainActivity extends Activity {
     private static final String PREFS = "VpnManagerPrefs";
     private static final String KEY_FAV = "favorites";
     private static final String KEY_CUSTOM = "custom_vpns";
-    private static final String KEY_MARKS = "app_marks"; // 新增：自定义标记 Map
+    private static final String KEY_MARKS = "app_marks";
+    private static final String KEY_VIRTUAL = "virtual_airports";
     private static final String KEY_THEME = "theme_index";
     private static final String KEY_SHOW_ALL = "show_all";
     private static final String VPN_SERVICE_ACTION = "android.net.VpnService";
@@ -71,8 +72,7 @@ public class MainActivity extends Activity {
     private TextView titleText;
     private TextView emptyView;
     private ListView listView;
-    private Button refreshButton;
-    private Button themeButton;
+    private Button btnSettings;
     private EditText searchBox;
     private CheckBox showAllCheckbox;
     private TextView tvHelp;
@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
     private Set<String> favoritePackages = new HashSet<>();
     private Set<String> customVpnPackages = new HashSet<>();
     private Map<String, String> appMarks = new HashMap<>();
+    private Set<String> virtualAirports = new HashSet<>();
 
     private final BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
         @Override
@@ -123,6 +124,7 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         favoritePackages = new HashSet<>(prefs.getStringSet(KEY_FAV, Collections.emptySet()));
         customVpnPackages = new HashSet<>(prefs.getStringSet(KEY_CUSTOM, Collections.emptySet()));
+        virtualAirports = new HashSet<>(prefs.getStringSet(KEY_VIRTUAL, Collections.emptySet()));
         loadMarks();
         isShowAll = prefs.getBoolean(KEY_SHOW_ALL, false);
 
@@ -130,8 +132,7 @@ public class MainActivity extends Activity {
         titleText = findViewById(R.id.title_text);
         emptyView = findViewById(R.id.empty_view);
         listView = findViewById(R.id.list);
-        refreshButton = findViewById(R.id.refresh);
-        themeButton = findViewById(R.id.theme_btn);
+        btnSettings = findViewById(R.id.btn_settings);
         searchBox = findViewById(R.id.search_box);
         showAllCheckbox = findViewById(R.id.show_all_checkbox);
         tvHelp = findViewById(R.id.tv_help);
@@ -152,23 +153,33 @@ public class MainActivity extends Activity {
 
         tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle("使用说明")
-                .setMessage("【点击】弹出操作菜单，不再直接启动。\n\n"
-                        + "【打标记】给软件打上标记（如：稳定、机场名）。一旦打上标记，它会自动被收编为 VPN。\n\n"
-                        + "【收藏与排序】长按可直接收藏置顶，排序：收藏 > 已识别/标记 > 名称。\n\n"
-                        + "【显示全部】勾选后可看到所有 App。")
+                .setMessage("【设置中心】点击右上角「⚙️ 设置」，可以添加自建机场、切换背景主题。\n\n"
+                        + "【全自动刷新】安装、卸载、修改标签、增删机场，列表会自动更新。\n\n"
+                        + "【点击 App】弹出菜单，可打开、打标签、卸载等。\n\n"
+                        + "【长按收藏】长按任意条目可直接置顶收藏。")
                 .setPositiveButton("我知道了", null)
                 .show());
 
-        themeButton.setOnClickListener(v -> showThemeDialog());
+        btnSettings.setOnClickListener(v -> {
+            String[] options = {"➕ 添加自建机场", "🎨 切换背景主题"};
+            new AlertDialog.Builder(this)
+                    .setTitle("设置")
+                    .setItems(options, (dialog, which) -> {
+                        if (which == 0) {
+                            showAddAirportDialog();
+                        } else if (which == 1) {
+                            showThemeDialog();
+                        }
+                    })
+                    .show();
+        });
 
-        // 【改版核心】：短按弹出菜单，不再直接打开
         listView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= apps.size()) return;
             AppInfo app = apps.get(position);
             showAppOptionsDialog(app);
         });
 
-        // 长按直接切换收藏，方便快捷
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= apps.size()) return true;
             AppInfo app = apps.get(position);
@@ -183,8 +194,6 @@ public class MainActivity extends Activity {
             }
             @Override public void afterTextChanged(Editable s) {}
         });
-
-        refreshButton.setOnClickListener(v -> scanApps());
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
@@ -210,7 +219,6 @@ public class MainActivity extends Activity {
         receiverRegistered = false;
     }
 
-    // 解析并加载标记
     private void loadMarks() {
         appMarks.clear();
         String marksJson = prefs.getString(KEY_MARKS, "{}");
@@ -224,51 +232,107 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {}
     }
 
-    // 保存标记、收藏、收编
     private void saveSets() {
         JSONObject jsonObject = new JSONObject(appMarks);
         prefs.edit()
                 .putStringSet(KEY_FAV, new HashSet<>(favoritePackages))
                 .putStringSet(KEY_CUSTOM, new HashSet<>(customVpnPackages))
+                .putStringSet(KEY_VIRTUAL, new HashSet<>(virtualAirports))
                 .putString(KEY_MARKS, jsonObject.toString())
                 .apply();
     }
 
-    // 短按弹出的核心功能菜单
+    private void showAddAirportDialog() {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setHint("例如：一元机场、XX专线");
+        new AlertDialog.Builder(this)
+                .setTitle("添加自建机场")
+                .setView(input)
+                .setPositiveButton("添加", (dialog, which) -> {
+                    String name = input.getText().toString().trim();
+                    if (!name.isEmpty()) {
+                        if (virtualAirports.contains(name)) {
+                            Toast.makeText(this, "该机场已存在", Toast.LENGTH_SHORT).show();
+                        } else {
+                            virtualAirports.add(name);
+                            saveSets();
+                            scanApps();
+                        }
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showRenameAirportDialog(AppInfo app) {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setText(app.label);
+        new AlertDialog.Builder(this)
+                .setTitle("修改机场名称")
+                .setView(input)
+                .setPositiveButton("保存", (dialog, which) -> {
+                    String newName = input.getText().toString().trim();
+                    if (!newName.isEmpty() && !newName.equals(app.label)) {
+                        virtualAirports.remove(app.label);
+                        virtualAirports.add(newName);
+                        saveSets();
+                        scanApps();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void deleteAirport(AppInfo app) {
+        new AlertDialog.Builder(this)
+                .setTitle("删除机场")
+                .setMessage("确定删除自建机场「" + app.label + "」？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    virtualAirports.remove(app.label);
+                    saveSets();
+                    scanApps();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void showAppOptionsDialog(AppInfo app) {
         List<String> options = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
 
-        // 1. 打开
-        options.add("🚀 打开应用");
-        actions.add(() -> {
-            if (app.launchIntent != null) {
-                try { startActivity(app.launchIntent); } 
-                catch (Exception e) { Toast.makeText(this, "无法启动", Toast.LENGTH_SHORT).show(); }
+        if (app.isVirtual) {
+            options.add("📝 修改名称");
+            actions.add(() -> showRenameAirportDialog(app));
+            options.add("🗑️ 删除机场");
+            actions.add(() -> deleteAirport(app));
+        } else {
+            options.add("🚀 打开应用");
+            actions.add(() -> {
+                if (app.launchIntent != null) {
+                    try { startActivity(app.launchIntent); } 
+                    catch (Exception e) { Toast.makeText(this, "无法启动", Toast.LENGTH_SHORT).show(); }
+                }
+            });
+
+            options.add("🏷️ 添加/修改标签");
+            actions.add(() -> showMarkDialog(app));
+
+            options.add("📋 复制包名");
+            actions.add(() -> copyPackage(app.packageName));
+
+            options.add("⚙️ 应用信息");
+            actions.add(() -> jumpToSettings(app.packageName));
+
+            if (app.isCustom) {
+                options.add("❌ 取消收编");
+                actions.add(() -> unmarkVpn(app.packageName));
             }
-        });
 
-        // 2. 打标记
-        options.add("🏷️ 添加/修改标记");
-        actions.add(() -> showMarkDialog(app));
-
-        // 3. 复制包名
-        options.add("📋 复制包名");
-        actions.add(() -> copyPackage(app.packageName));
-
-        // 4. 应用信息
-        options.add("⚙️ 应用信息");
-        actions.add(() -> jumpToSettings(app.packageName));
-
-        // 5. 取消收编
-        if (app.isCustom) {
-            options.add("❌ 取消收编");
-            actions.add(() -> unmarkVpn(app.packageName));
+            options.add("🗑️ 卸载应用");
+            actions.add(() -> confirmUninstall(app));
         }
-
-        // 6. 卸载
-        options.add("🗑️ 卸载应用");
-        actions.add(() -> confirmUninstall(app));
 
         String[] items = options.toArray(new String[0]);
         new AlertDialog.Builder(this)
@@ -277,14 +341,15 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    // 标记选择弹窗
     private void showMarkDialog(AppInfo app) {
-        String[] marks = {"最低收费", "最高收费", "稳定", "下载速度快", "免费好用", "自建标记 (输入机场名等)"};
+        String[] marks = {"最低收费", "最高收费", "稳定", "下载速度快", "免费好用", "清除标签"};
         new AlertDialog.Builder(this)
-                .setTitle("选择或自定义标记")
+                .setTitle("选择标签")
                 .setItems(marks, (dialog, which) -> {
                     if (which == 5) {
-                        showCustomMarkInput(app);
+                        appMarks.remove(app.packageName);
+                        saveSets();
+                        scanApps();
                     } else {
                         applyMark(app.packageName, marks[which]);
                     }
@@ -292,44 +357,16 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    // 自定义标记输入框
-    private void showCustomMarkInput(AppInfo app) {
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        input.setHint("输入标记，如：XX机场、自用");
-        if (app.mark != null) {
-            input.setText(app.mark);
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("自定义标记")
-                .setView(input)
-                .setPositiveButton("保存", (dialog, which) -> {
-                    String text = input.getText().toString().trim();
-                    if (!text.isEmpty()) applyMark(app.packageName, text);
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    // 应用标记（打上标记后，自动归为 VPN / 收编）
     private void applyMark(String packageName, String mark) {
         appMarks.put(packageName, mark);
-        customVpnPackages.add(packageName); // 打标记自动视为收编
+        customVpnPackages.add(packageName);
         saveSets();
-        for (AppInfo a : allApps) {
-            if (a.packageName.equals(packageName)) {
-                a.mark = mark;
-                a.isCustom = true;
-            }
-        }
-        sortAndAssignIndex();
-        filterApps(searchBox.getText().toString());
-        Toast.makeText(this, "已标记为：" + mark + "（已自动收编）", Toast.LENGTH_SHORT).show();
+        scanApps(); 
     }
 
     private void unmarkVpn(String packageName) {
         customVpnPackages.remove(packageName);
-        appMarks.remove(packageName); // 取消收编顺便清空标记
+        appMarks.remove(packageName);
         saveSets();
         scanApps();
     }
@@ -341,6 +378,7 @@ public class MainActivity extends Activity {
             favoritePackages.add(packageName);
         }
         saveSets();
+        
         for (AppInfo a : allApps) {
             a.isFavorite = favoritePackages.contains(a.packageName);
         }
@@ -418,11 +456,10 @@ public class MainActivity extends Activity {
         final Set<String> favSnap = new HashSet<>(favoritePackages);
         final Set<String> customSnap = new HashSet<>(customVpnPackages);
         final Map<String, String> marksSnap = new HashMap<>(appMarks);
+        final Set<String> virtualSnap = new HashSet<>(virtualAirports);
         final boolean showAll = isShowAll;
         final String self = getPackageName();
 
-        refreshButton.setEnabled(false);
-        refreshButton.setText("扫描中...");
         emptyView.setText("正在扫描…");
 
         int first = listView.getFirstVisiblePosition();
@@ -470,7 +507,6 @@ public class MainActivity extends Activity {
                     boolean isCustom = customSnap.contains(pkg);
                     boolean isFav = favSnap.contains(pkg);
                     
-                    // 核心逻辑：如果被打上了标记（mark不为空），也默认强制显示
                     if (!showAll && !isAuto && !isCustom && !isFav && mark == null) continue;
 
                     Drawable icon = iconCache.get(pkg);
@@ -482,8 +518,15 @@ public class MainActivity extends Activity {
                         }
                         iconCache.put(pkg, icon);
                     }
-                    found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, mark, formatSize(ai)));
+                    found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, mark, formatSize(ai), false));
                 }
+            }
+
+            for (String airportName : virtualSnap) {
+                String fakePkg = "virtual_" + airportName.hashCode();
+                Drawable icon = pm.getDefaultActivityIcon();
+                boolean isFav = favSnap.contains(fakePkg);
+                found.add(new AppInfo(airportName, fakePkg, icon, null, false, true, isFav, "机场", "自建", true));
             }
 
             runOnUiThread(() -> {
@@ -495,8 +538,7 @@ public class MainActivity extends Activity {
                 sortAndAssignIndex();
                 filterApps(searchBox.getText().toString());
                 listView.post(() -> listView.setSelectionFromTop(first, top));
-                refreshButton.setEnabled(true);
-                refreshButton.setText("刷新");
+                
                 if (found.isEmpty()) {
                     emptyView.setText(showAll
                             ? "没有可启动的第三方应用"
@@ -559,12 +601,13 @@ public class MainActivity extends Activity {
         final boolean isAutoDetected;
         boolean isCustom;
         boolean isFavorite;
-        String mark; // 标记
+        String mark;
         final String sizeStr;
+        final boolean isVirtual;
         int absoluteIndex;
 
         AppInfo(String label, String packageName, Drawable icon, Intent launchIntent,
-                boolean isAutoDetected, boolean isCustom, boolean isFavorite, String mark, String sizeStr) {
+                boolean isAutoDetected, boolean isCustom, boolean isFavorite, String mark, String sizeStr, boolean isVirtual) {
             this.label = label;
             this.packageName = packageName;
             this.icon = icon;
@@ -574,10 +617,11 @@ public class MainActivity extends Activity {
             this.isFavorite = isFavorite;
             this.mark = mark;
             this.sizeStr = sizeStr;
+            this.isVirtual = isVirtual;
         }
 
         boolean isDetected() {
-            return isAutoDetected || isCustom || mark != null;
+            return isAutoDetected || isCustom || mark != null || isVirtual;
         }
     }
 
@@ -608,13 +652,19 @@ public class MainActivity extends Activity {
 
             AppInfo app = apps.get(position);
             holder.index.setText(String.valueOf(app.absoluteIndex));
-            holder.icon.setImageDrawable(app.icon);
+            
+            if (app.isVirtual) {
+                holder.icon.setImageResource(android.R.drawable.ic_menu_compass);
+            } else {
+                holder.icon.setImageDrawable(app.icon);
+            }
+
             holder.name.setText(app.label);
             holder.size.setText(app.sizeStr);
             holder.fav.setVisibility(app.isFavorite ? View.VISIBLE : View.GONE);
             
             if (app.mark != null && !app.mark.isEmpty()) {
-                holder.mark.setText("[" + app.mark + "]");
+                holder.mark.setText(app.mark);
                 holder.mark.setVisibility(View.VISIBLE);
             } else {
                 holder.mark.setVisibility(View.GONE);
@@ -667,4 +717,4 @@ public class MainActivity extends Activity {
         TextView size;
         TextView plus;
     }
-                          }
+}
