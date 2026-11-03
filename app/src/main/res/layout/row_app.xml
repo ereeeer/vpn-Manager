@@ -64,23 +64,26 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical">
 
+            <!-- 新增：显示标记 -->
             <TextView
-                android:id="@+id/app_package"
-                android:layout_width="0dp"
+                android:id="@+id/tv_custom_mark"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:textSize="12sp"
-                android:textColor="#757575" />
+                android:textColor="#E91E63"
+                android:textStyle="bold"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tv_size"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
-                android:textColor="#757575"
-                android:layout_marginStart="8dp" />
+                android:textColor="#757575" />
         </LinearLayout>
     </LinearLayout>
 
