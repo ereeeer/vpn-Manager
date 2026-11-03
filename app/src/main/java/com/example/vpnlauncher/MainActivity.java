@@ -12,8 +12,10 @@ import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -68,8 +70,13 @@ public class MainActivity extends Activity {
             "sagernet", "outline", "hiddify", "roxi", "tuic"
     };
 
+    private static final String[] THEME_NAMES = {
+            "渐变蓝", "深色夜间", "护眼绿", "薰衣草紫", "暖橙米色", "薄荷青"
+    };
+
     private LinearLayout rootLayout;
     private TextView titleText;
+    private TextView subtitleText;
     private TextView emptyView;
     private ListView listView;
     private Button btnSettings;
@@ -79,6 +86,7 @@ public class MainActivity extends Activity {
     private AppAdapter adapter;
 
     private final LruCache<String, Drawable> iconCache = new LruCache<>(150);
+    private ThemeColors currentTheme = ThemeColors.THEMES[0];
 
     private boolean isDarkMode = false;
     private boolean isShowAll = false;
@@ -99,10 +107,11 @@ public class MainActivity extends Activity {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (action == null) return;
-            
+
             if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
                 if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return;
-                String pkg = intent.getData() != null ? intent.getData().getSchemeSpecificPart() : null;
+                String pkg = intent.getData() != null
+                        ? intent.getData().getSchemeSpecificPart() : null;
                 if (pkg != null) {
                     favoritePackages.remove(pkg);
                     customVpnPackages.remove(pkg);
@@ -130,6 +139,7 @@ public class MainActivity extends Activity {
 
         rootLayout = findViewById(R.id.root_layout);
         titleText = findViewById(R.id.title_text);
+        subtitleText = findViewById(R.id.subtitle_text);
         emptyView = findViewById(R.id.empty_view);
         listView = findViewById(R.id.list);
         btnSettings = findViewById(R.id.btn_settings);
@@ -153,37 +163,32 @@ public class MainActivity extends Activity {
 
         tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle("使用说明")
-                .setMessage("【设置中心】点击右上角「⚙️ 设置」，可以添加自建机场、切换背景主题。\n\n"
-                        + "【全自动刷新】安装、卸载、修改标签、增删机场，列表会自动更新。\n\n"
-                        + "【点击 App】弹出菜单，可打开、打标签、卸载等。\n\n"
+                .setMessage("【设置中心】点击右上角「设置」，可以添加自建机场、切换界面主题。\n\n"
+                        + "【自动刷新】安装、卸载应用以及修改标签、增删机场后，列表会自动更新。\n\n"
+                        + "【点击应用】弹出菜单，可打开、打标签、卸载等。\n\n"
                         + "【长按收藏】长按任意条目可直接置顶收藏。")
                 .setPositiveButton("我知道了", null)
                 .show());
 
         btnSettings.setOnClickListener(v -> {
-            String[] options = {"➕ 添加自建机场", "🎨 切换背景主题"};
+            String[] options = {"➕ 添加自建机场", "🎨 切换界面主题"};
             new AlertDialog.Builder(this)
                     .setTitle("设置")
                     .setItems(options, (dialog, which) -> {
-                        if (which == 0) {
-                            showAddAirportDialog();
-                        } else if (which == 1) {
-                            showThemeDialog();
-                        }
+                        if (which == 0) showAddAirportDialog();
+                        else if (which == 1) showThemeDialog();
                     })
                     .show();
         });
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= apps.size()) return;
-            AppInfo app = apps.get(position);
-            showAppOptionsDialog(app);
+            showAppOptionsDialog(apps.get(position));
         });
 
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= apps.size()) return true;
-            AppInfo app = apps.get(position);
-            toggleFavorite(app.packageName);
+            toggleFavorite(apps.get(position).packageName);
             return true;
         });
 
@@ -311,8 +316,11 @@ public class MainActivity extends Activity {
             options.add("🚀 打开应用");
             actions.add(() -> {
                 if (app.launchIntent != null) {
-                    try { startActivity(app.launchIntent); } 
-                    catch (Exception e) { Toast.makeText(this, "无法启动", Toast.LENGTH_SHORT).show(); }
+                    try {
+                        startActivity(app.launchIntent);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "无法启动", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
@@ -334,10 +342,10 @@ public class MainActivity extends Activity {
             actions.add(() -> confirmUninstall(app));
         }
 
-        String[] items = options.toArray(new String[0]);
         new AlertDialog.Builder(this)
                 .setTitle(app.label)
-                .setItems(items, (dialog, which) -> actions.get(which).run())
+                .setItems(options.toArray(new String[0]),
+                        (dialog, which) -> actions.get(which).run())
                 .show();
     }
 
@@ -361,7 +369,7 @@ public class MainActivity extends Activity {
         appMarks.put(packageName, mark);
         customVpnPackages.add(packageName);
         saveSets();
-        scanApps(); 
+        scanApps();
     }
 
     private void unmarkVpn(String packageName) {
@@ -372,13 +380,10 @@ public class MainActivity extends Activity {
     }
 
     private void toggleFavorite(String packageName) {
-        if (favoritePackages.contains(packageName)) {
-            favoritePackages.remove(packageName);
-        } else {
-            favoritePackages.add(packageName);
-        }
+        if (favoritePackages.contains(packageName)) favoritePackages.remove(packageName);
+        else favoritePackages.add(packageName);
         saveSets();
-        
+
         for (AppInfo a : allApps) {
             a.isFavorite = favoritePackages.contains(a.packageName);
         }
@@ -415,30 +420,70 @@ public class MainActivity extends Activity {
     }
 
     private void showThemeDialog() {
-        String[] themes = {"明显灰蓝", "明显护眼绿", "明显米黄", "极致纯黑 (夜间)"};
         new AlertDialog.Builder(this)
-                .setTitle("选择一个对比强烈的背景色")
-                .setItems(themes, (dialog, which) -> applyTheme(which, true))
+                .setTitle("选择界面主题")
+                .setSingleChoiceItems(THEME_NAMES, prefs.getInt(KEY_THEME, 0),
+                        (dialog, which) -> {
+                            applyTheme(which, true);
+                            dialog.dismiss();
+                        })
+                .setNegativeButton("取消", null)
                 .show();
     }
 
     private void applyTheme(int which, boolean persist) {
-        String colorHex;
-        switch (which) {
-            case 1: colorHex = "#CCE8CF"; isDarkMode = false; break;
-            case 2: colorHex = "#FCE8C8"; isDarkMode = false; break;
-            case 3: colorHex = "#121212"; isDarkMode = true; break;
-            default: colorHex = "#D6E4F0"; isDarkMode = false; which = 0;
+        if (which < 0 || which >= ThemeColors.THEMES.length) which = 0;
+        currentTheme = ThemeColors.THEMES[which];
+        isDarkMode = currentTheme.dark;
+
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{currentTheme.backgroundStart, currentTheme.backgroundEnd});
+        rootLayout.setBackground(background);
+
+        titleText.setTextColor(currentTheme.text);
+        if (subtitleText != null) subtitleText.setTextColor(currentTheme.secondary);
+        showAllCheckbox.setTextColor(currentTheme.text);
+        tvHelp.setTextColor(Color.WHITE);
+        tvHelp.setBackground(circleDrawable(currentTheme.accent));
+        emptyView.setTextColor(currentTheme.secondary);
+
+        searchBox.setTextColor(currentTheme.text);
+        searchBox.setHintTextColor(currentTheme.secondary);
+        searchBox.setBackground(roundDrawable(currentTheme.searchBackground,
+                currentTheme.stroke, dp(18)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            showAllCheckbox.setButtonTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{currentTheme.accent, currentTheme.secondary}));
         }
-        rootLayout.setBackgroundColor(Color.parseColor(colorHex));
-        int title = isDarkMode ? Color.WHITE : Color.parseColor("#333333");
-        int secondary = isDarkMode ? Color.parseColor("#CCCCCC") : Color.parseColor("#555555");
-        titleText.setTextColor(title);
-        showAllCheckbox.setTextColor(secondary);
-        tvHelp.setTextColor(secondary);
-        emptyView.setTextColor(secondary);
+
+        btnSettings.setTextColor(currentTheme.text);
+        btnSettings.setBackground(roundDrawable(currentTheme.card,
+                currentTheme.stroke, dp(16)));
+        btnSettings.setAllCaps(false);
+
         if (persist) prefs.edit().putInt(KEY_THEME, which).apply();
         if (adapter != null) adapter.notifyDataSetChanged();
+    }
+
+    private GradientDrawable roundDrawable(int color, int stroke, int radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(radius);
+        if (stroke != Color.TRANSPARENT) drawable.setStroke(dp(1), stroke);
+        return drawable;
+    }
+
+    private GradientDrawable circleDrawable(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.OVAL);
+        drawable.setColor(color);
+        return drawable;
+    }
+
+    private int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void jumpToSettings(String packageName) {
@@ -461,7 +506,6 @@ public class MainActivity extends Activity {
         final String self = getPackageName();
 
         emptyView.setText("正在扫描…");
-
         int first = listView.getFirstVisiblePosition();
         View topView = listView.getChildAt(0);
         int top = topView == null ? 0 : topView.getTop();
@@ -469,7 +513,8 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             PackageManager pm = getPackageManager();
             Set<String> vpnPackages = new HashSet<>();
-            List<ResolveInfo> vpnServices = pm.queryIntentServices(new Intent(VPN_SERVICE_ACTION), 0);
+            List<ResolveInfo> vpnServices =
+                    pm.queryIntentServices(new Intent(VPN_SERVICE_ACTION), 0);
             if (vpnServices != null) {
                 for (ResolveInfo ri : vpnServices) {
                     if (ri.serviceInfo != null) vpnPackages.add(ri.serviceInfo.packageName);
@@ -501,12 +546,11 @@ public class MainActivity extends Activity {
 
                     CharSequence labelCs = pm.getApplicationLabel(ai);
                     String label = labelCs == null ? pkg : labelCs.toString();
-                    
                     String mark = marksSnap.get(pkg);
                     boolean isAuto = vpnPackages.contains(pkg) || matchesKeyword(label, pkg);
                     boolean isCustom = customSnap.contains(pkg);
                     boolean isFav = favSnap.contains(pkg);
-                    
+
                     if (!showAll && !isAuto && !isCustom && !isFav && mark == null) continue;
 
                     Drawable icon = iconCache.get(pkg);
@@ -518,7 +562,8 @@ public class MainActivity extends Activity {
                         }
                         iconCache.put(pkg, icon);
                     }
-                    found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, mark, formatSize(ai), false));
+                    found.add(new AppInfo(label, pkg, icon, launch, isAuto,
+                            isCustom, isFav, mark, formatSize(ai), false));
                 }
             }
 
@@ -526,23 +571,24 @@ public class MainActivity extends Activity {
                 String fakePkg = "virtual_" + airportName.hashCode();
                 Drawable icon = pm.getDefaultActivityIcon();
                 boolean isFav = favSnap.contains(fakePkg);
-                found.add(new AppInfo(airportName, fakePkg, icon, null, false, true, isFav, "机场", "自建", true));
+                found.add(new AppInfo(airportName, fakePkg, icon, null,
+                        false, true, isFav, "机场", "自建", true));
             }
 
             runOnUiThread(() -> {
                 if (generation != scanGeneration || isFinishing() || isDestroyed()) return;
-                if (listView.getAdapter() == null) return; 
-                
+                if (listView.getAdapter() == null) return;
+
                 allApps.clear();
                 allApps.addAll(found);
                 sortAndAssignIndex();
                 filterApps(searchBox.getText().toString());
                 listView.post(() -> listView.setSelectionFromTop(first, top));
-                
+
                 if (found.isEmpty()) {
                     emptyView.setText(showAll
                             ? "没有可启动的第三方应用"
-                            : "没有识别到 VPN 应用\n勾选「显示全部应用」后，点 [+] 手动收编");
+                            : "没有识别到 VPN 应用\n勾选「显示全部应用」后，可手动收编");
                 }
             });
         }).start();
@@ -565,7 +611,8 @@ public class MainActivity extends Activity {
                 for (String split : ai.splitSourceDirs) size += new File(split).length();
             }
         } catch (Exception ignored) {}
-        return String.format(Locale.getDefault(), "%.1f MB", size / (1024.0 * 1024.0));
+        return String.format(Locale.getDefault(), "%.1f MB",
+                size / (1024.0 * 1024.0));
     }
 
     private void sortAndAssignIndex() {
@@ -607,7 +654,8 @@ public class MainActivity extends Activity {
         int absoluteIndex;
 
         AppInfo(String label, String packageName, Drawable icon, Intent launchIntent,
-                boolean isAutoDetected, boolean isCustom, boolean isFavorite, String mark, String sizeStr, boolean isVirtual) {
+                boolean isAutoDetected, boolean isCustom, boolean isFavorite,
+                String mark, String sizeStr, boolean isVirtual) {
             this.label = label;
             this.packageName = packageName;
             this.icon = icon;
@@ -634,7 +682,8 @@ public class MainActivity extends Activity {
         public View getView(int position, View convertView, ViewGroup parent) {
             ViewHolder holder;
             if (convertView == null) {
-                convertView = LayoutInflater.from(MainActivity.this).inflate(R.layout.row_app, parent, false);
+                convertView = LayoutInflater.from(MainActivity.this)
+                        .inflate(R.layout.row_app, parent, false);
                 holder = new ViewHolder();
                 holder.root = convertView.findViewById(R.id.row_root);
                 holder.index = convertView.findViewById(R.id.tv_index);
@@ -645,53 +694,48 @@ public class MainActivity extends Activity {
                 holder.fav = convertView.findViewById(R.id.tv_favorite);
                 holder.size = convertView.findViewById(R.id.tv_size);
                 holder.plus = convertView.findViewById(R.id.tv_mark_vpn);
+                holder.arrow = convertView.findViewById(R.id.tv_arrow);
                 convertView.setTag(holder);
             } else {
                 holder = (ViewHolder) convertView.getTag();
             }
 
             AppInfo app = apps.get(position);
+            ThemeColors theme = currentTheme;
+
             holder.index.setText(String.valueOf(app.absoluteIndex));
-            
-            if (app.isVirtual) {
-                holder.icon.setImageResource(android.R.drawable.ic_menu_compass);
-            } else {
-                holder.icon.setImageDrawable(app.icon);
-            }
+            holder.index.setTextColor(theme.secondary);
+            holder.index.setBackground(circleDrawable(theme.indexBackground));
+
+            if (app.isVirtual) holder.icon.setImageResource(android.R.drawable.ic_menu_compass);
+            else holder.icon.setImageDrawable(app.icon);
 
             holder.name.setText(app.label);
+            holder.name.setTextColor(theme.text);
             holder.size.setText(app.sizeStr);
+            holder.size.setTextColor(theme.secondary);
             holder.fav.setVisibility(app.isFavorite ? View.VISIBLE : View.GONE);
-            
+            holder.arrow.setTextColor(theme.secondary);
+
             if (app.mark != null && !app.mark.isEmpty()) {
                 holder.mark.setText(app.mark);
                 holder.mark.setVisibility(View.VISIBLE);
             } else {
                 holder.mark.setVisibility(View.GONE);
             }
-            
-            holder.root.setBackgroundColor(isDarkMode
-                    ? Color.parseColor("#2C2C2C")
-                    : Color.parseColor("#66FFFFFF"));
 
-            if (isDarkMode) {
-                holder.name.setTextColor(Color.WHITE);
-                holder.size.setTextColor(Color.parseColor("#BDBDBD"));
-                holder.index.setTextColor(Color.parseColor("#BDBDBD"));
-                holder.plus.setTextColor(Color.parseColor("#E0E0E0"));
-            } else {
-                holder.name.setTextColor(Color.parseColor("#212121"));
-                holder.size.setTextColor(Color.parseColor("#757575"));
-                holder.index.setTextColor(Color.parseColor("#757575"));
-                holder.plus.setTextColor(Color.parseColor("#888888"));
-            }
+            holder.root.setBackground(roundDrawable(theme.card, theme.cardStroke, dp(20)));
 
             if (app.isDetected()) {
                 holder.check.setVisibility(View.VISIBLE);
+                holder.check.setText("✓");
+                holder.check.setTextColor(Color.WHITE);
+                holder.check.setBackground(circleDrawable(Color.rgb(48, 190, 98)));
                 holder.plus.setVisibility(View.GONE);
                 holder.plus.setOnClickListener(null);
             } else if (isShowAll) {
                 holder.check.setVisibility(View.GONE);
+                holder.plus.setTextColor(theme.accent);
                 holder.plus.setVisibility(View.VISIBLE);
                 holder.plus.setOnClickListener(v -> applyMark(app.packageName, "手动收编"));
             } else {
@@ -701,20 +745,8 @@ public class MainActivity extends Activity {
             }
 
             holder.fav.setOnClickListener(v -> toggleFavorite(app.packageName));
-
             return convertView;
         }
     }
 
-    private static class ViewHolder {
-        LinearLayout root;
-        TextView index;
-        ImageView icon;
-        TextView name;
-        TextView mark;
-        TextView check;
-        TextView fav;
-        TextView size;
-        TextView plus;
-    }
-}
+    private static clas
