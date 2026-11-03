@@ -16,6 +16,7 @@
     android:paddingEnd="16dp"
     android:paddingTop="14dp"
     android:paddingBottom="14dp">
+
     <TextView
         android:id="@+id/tv_index"
         android:layout_width="36dp"
@@ -26,23 +27,27 @@
         android:textStyle="bold"
         android:textColor="#7889A8"
         android:layout_marginEnd="14dp" />
+
     <ImageView
         android:id="@+id/app_icon"
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:scaleType="fitCenter"
-        android:contentDescription="图标" />
+        android:contentDescription="应用图标" />
+
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginStart="14dp"
         android:orientation="vertical">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
+
             <TextView
                 android:id="@+id/tv_favorite"
                 android:layout_width="wrap_content"
@@ -51,6 +56,7 @@
                 android:textSize="14sp"
                 android:layout_marginEnd="6dp"
                 android:visibility="gone" />
+
             <TextView
                 android:id="@+id/app_name"
                 android:layout_width="0dp"
@@ -62,12 +68,14 @@
                 android:singleLine="true"
                 android:ellipsize="end" />
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="5dp"
             android:gravity="center_vertical">
+
             <TextView
                 android:id="@+id/tv_custom_mark"
                 android:layout_width="wrap_content"
@@ -82,6 +90,7 @@
                 android:paddingBottom="2dp"
                 android:layout_marginEnd="8dp"
                 android:visibility="gone" />
+
             <TextView
                 android:id="@+id/tv_size"
                 android:layout_width="wrap_content"
@@ -90,6 +99,7 @@
                 android:textColor="#7889A8" />
         </LinearLayout>
     </LinearLayout>
+
     <TextView
         android:id="@+id/tv_mark_vpn"
         android:layout_width="wrap_content"
@@ -101,14 +111,18 @@
         android:padding="8dp"
         android:layout_marginStart="4dp"
         android:visibility="gone" />
-    <!-- 完美的矢量绿勾 -->
+
+    <!-- 统一使用 ic_vpn_check -->
     <ImageView
         android:id="@+id/check_mark"
         android:layout_width="26dp"
         android:layout_height="26dp"
-        android:src="@drawable/ic_check_circle"
+        android:src="@drawable/ic_vpn_check"
+        android:scaleType="fitCenter"
+        android:contentDescription="VPN 已识别"
         android:layout_marginStart="8dp"
         android:visibility="gone" />
+
     <TextView
         android:id="@+id/tv_arrow"
         android:layout_width="20dp"
@@ -118,4 +132,5 @@
         android:textSize="24sp"
         android:textColor="#C0C8D8"
         android:layout_marginStart="6dp" />
+
 </LinearLayout>
