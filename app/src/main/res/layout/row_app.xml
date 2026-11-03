@@ -5,42 +5,42 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:background="#F7FFFFFF"
+    android:background="#F5FFFFFF"
+    android:elevation="4dp"
     android:foreground="?android:attr/selectableItemBackground"
     android:layout_marginStart="16dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginTop="6dp"
-    android:layout_marginBottom="6dp"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="11dp"
-    android:paddingBottom="11dp">
+    android:layout_marginTop="7dp"
+    android:layout_marginBottom="7dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
+    <!-- 序号：去掉写死的背景，改为代码动态生成胶囊 -->
     <TextView
         android:id="@+id/tv_index"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:gravity="center"
         android:text="1"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:textStyle="bold"
         android:textColor="#7889A8"
-        android:background="#E5EEFF"
-        android:layout_marginEnd="12dp" />
+        android:layout_marginEnd="14dp" />
 
     <ImageView
         android:id="@+id/app_icon"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:padding="3dp"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
         android:scaleType="fitCenter"
-        android:contentDescription="应用图标" />
+        android:contentDescription="图标" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="13dp"
+        android:layout_marginStart="14dp"
         android:orientation="vertical">
 
         <LinearLayout
@@ -54,14 +54,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="⭐"
-                android:textSize="13sp"
-                android:layout_marginEnd="4dp"
+                android:textSize="14sp"
+                android:layout_marginEnd="6dp"
                 android:visibility="gone" />
 
+            <!-- 应用名：黑得发亮，字重加粗 -->
             <TextView
                 android:id="@+id/app_name"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:textSize="17sp"
                 android:textStyle="bold"
                 android:textColor="#172B4D"
@@ -91,6 +93,7 @@
                 android:layout_marginEnd="8dp"
                 android:visibility="gone" />
 
+            <!-- 大小：柔和的灰蓝色 -->
             <TextView
                 android:id="@+id/tv_size"
                 android:layout_width="wrap_content"
@@ -114,25 +117,25 @@
 
     <TextView
         android:id="@+id/check_mark"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:gravity="center"
+        android:includeFontPadding="false"
         android:text="✓"
-        android:textSize="22sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#FFFFFF"
-        android:background="#30BE62"
-        android:layout_marginStart="6dp"
+        android:background="@drawable/bg_green_circle"
+        android:layout_marginStart="8dp"
         android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_arrow"
-        android:layout_width="24dp"
-        android:layout_height="40dp"
+        android:layout_width="20dp"
+        android:layout_height="wrap_content"
         android:gravity="center"
         android:text="›"
-        android:textSize="30sp"
-        android:textColor="#7889A8"
-        android:layout_marginStart="4dp" />
-
+        android:textSize="24sp"
+        android:textColor="#C0C8D8"
+        android:layout_marginStart="6dp" />
 </LinearLayout>
