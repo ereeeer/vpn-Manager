@@ -7,6 +7,7 @@
     android:paddingTop="12dp"
     android:background="#EAF3FF">
 
+    <!-- 顶部标题 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -55,23 +56,58 @@
             android:paddingEnd="12dp" />
     </LinearLayout>
 
-    <EditText
-        android:id="@+id/search_box"
+    <!-- 搜索框：放大镜 + 输入框 + 清除按钮 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:layout_marginStart="18dp"
         android:layout_marginEnd="18dp"
         android:layout_marginTop="4dp"
         android:layout_marginBottom="8dp"
-        android:background="@android:drawable/edit_text"
-        android:hint="⌕  搜索应用或自建机场..."
-        android:textSize="16sp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:inputType="text"
-        android:maxLines="1"
-        android:imeOptions="actionSearch" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="6dp"
+        android:background="@drawable/search_box_bg">
 
+        <TextView
+            android:layout_width="28dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="⌕"
+            android:textSize="25sp"
+            android:textColor="#7889A8" />
+
+        <EditText
+            android:id="@+id/search_box"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="搜索应用或自建机场..."
+            android:textSize="15sp"
+            android:textColor="#172B4D"
+            android:textColorHint="#9AA8BC"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionSearch" />
+
+        <TextView
+            android:id="@+id/btn_clear_search"
+            android:layout_width="38dp"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="×"
+            android:textSize="24sp"
+            android:textColor="#7889A8"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- 显示全部应用 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -104,6 +140,7 @@
             android:background="#2878E8" />
     </LinearLayout>
 
+    <!-- 应用列表 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
