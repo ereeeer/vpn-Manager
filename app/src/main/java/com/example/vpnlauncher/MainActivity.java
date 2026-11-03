@@ -1012,13 +1012,10 @@ public class MainActivity extends Activity {
                             "自建",
                             true));
                 }
+} catch (Exception e) {
 
-            } catch (Exception e) {
-
-                scanError = e.getClass().getSimpleName()
+                String errorMessage = e.getClass().getSimpleName()
                         + (e.getMessage() == null
-                        ? ""
-                        : ": " ++ (e.getMessage() == null
                         ? ""
                         : ": " + e.getMessage());
 
@@ -1029,16 +1026,22 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_LONG
                     ).show();
                 });
+
             } finally {
+
                 runOnUiThread(() -> {
                     if (scanButton != null) {
                         scanButton.setEnabled(true);
                         scanButton.setText("开始扫描");
                     }
                 });
+
             }
+
         }).start();
-        // ==================== 主题颜色配置 ====================
+    }
+
+    // ==================== 主题颜色配置 ====================
     private static class ThemeColors {
 
         final int backgroundStart;
