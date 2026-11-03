@@ -14,20 +14,16 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.LruCache;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.OvershootInterpolator;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -75,13 +71,13 @@ public class MainActivity extends Activity {
     private TextView tvHelp;
     private AppAdapter adapter;
 
+    // 图标缓存
+    private final LruCache<String, Drawable> iconCache = new LruCache<>(150);
+
     private boolean isDarkMode = false;
     private boolean isShowAll = false;
     private int scanGeneration = 0;
     private boolean receiverRegistered = false;
-
-    private String activeVpnPackage;
-    private String alwaysOnVpnPackage;
 
     private final List<AppInfo> allApps = new ArrayList<>();
     private final List<AppInfo> apps = new ArrayList<>();
@@ -90,21 +86,24 @@ public class MainActivity extends Activity {
     private Set<String> favoritePackages = new HashSet<>();
     private Set<String> customVpnPackages = new HashSet<>();
 
-    private ConnectivityManager.NetworkCallback vpnCallback;
-
     private final BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (!Intent.ACTION_PACKAGE_REMOVED.equals(intent.getAction())) return;
-            if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return;
-            String pkg = intent.getData() != null
-                    ? intent.getData().getSchemeSpecificPart() : null;
-            if (pkg != null) {
-                favoritePackages.remove(pkg);
-                customVpnPackages.remove(pkg);
-                saveSets();
+            String action = intent.getAction();
+            if (action == null) return;
+            
+            if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
+                if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return;
+                String pkg = intent.getData() != null ? intent.getData().getSchemeSpecificPart() : null;
+                if (pkg != null) {
+                    favoritePackages.remove(pkg);
+                    customVpnPackages.remove(pkg);
+                    saveSets();
+                }
+                scanApps(); // 卸载后刷新
+            } else if (Intent.ACTION_PACKAGE_ADDED.equals(action)) {
+                scanApps(); // 安装后自动刷新
             }
-            scanApps();
         }
     };
 
@@ -146,7 +145,6 @@ public class MainActivity extends Activity {
                 .setTitle("使用说明")
                 .setMessage("【智能识别】\n列出声明了系统 VPN 服务的应用，以及名称或包名包含 VPN、Clash、v2ray、WireGuard 等关键词的应用。\n\n"
                         + "【手动收编】\n勾选「显示全部应用」后，未识别的软件右侧有 [+]。点一下永久收编。长按已收编项可选「取消收编」。\n\n"
-                        + "【当前连接】\n正在接管网络的 VPN 显示「已连接」。系统里设为始终开启的显示「始终开启」。\n\n"
                         + "【收藏与排序】\n长按可收藏置顶，排序：收藏 > 已识别 > 名称。\n\n"
                         + "【长按菜单】\n收藏、复制包名、应用信息、卸载。\n\n"
                         + "【主题】\n点 🎨 切换背景，选择会记住。")
@@ -208,7 +206,9 @@ public class MainActivity extends Activity {
 
         refreshButton.setOnClickListener(v -> scanApps());
 
-        IntentFilter filter = new IntentFilter(Intent.ACTION_PACKAGE_REMOVED);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
         filter.addDataScheme("package");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(uninstallReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -218,46 +218,6 @@ public class MainActivity extends Activity {
         receiverRegistered = true;
 
         scanApps();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        refreshVpnStatus();
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        if (cm == null || vpnCallback != null) return;
-        vpnCallback = new ConnectivityManager.NetworkCallback() {
-            @Override
-            public void onAvailable(Network network) {
-                runOnUiThread(() -> refreshVpnStatus());
-            }
-            @Override
-            public void onLost(Network network) {
-                runOnUiThread(() -> refreshVpnStatus());
-            }
-        };
-        try {
-            NetworkRequest request = new NetworkRequest.Builder()
-                    .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
-                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-                    .build();
-            cm.registerNetworkCallback(request, vpnCallback);
-        } catch (Exception e) {
-            vpnCallback = null;
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (vpnCallback == null) return;
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-        if (cm != null) {
-            try {
-                cm.unregisterNetworkCallback(vpnCallback);
-            } catch (Exception ignored) {}
-        }
-        vpnCallback = null;
     }
 
     @Override
@@ -372,64 +332,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void refreshVpnStatus() {
-        String newActive = findActiveVpnPackage();
-        String newAlwaysOn = null;
-        try {
-            newAlwaysOn = Settings.Secure.getString(getContentResolver(), "always_on_vpn_app");
-        } catch (Exception e) {}
-
-        if (String.valueOf(activeVpnPackage).equals(String.valueOf(newActive)) && 
-            String.valueOf(alwaysOnVpnPackage).equals(String.valueOf(newAlwaysOn))) {
-            return;
-        }
-
-        activeVpnPackage = newActive;
-        alwaysOnVpnPackage = newAlwaysOn;
-
-        int first = listView.getFirstVisiblePosition();
-        int last = listView.getLastVisiblePosition();
-
-        for (int i = 0; i < apps.size(); i++) {
-            AppInfo app = apps.get(i);
-            boolean isActive = app.packageName.equals(activeVpnPackage);
-            boolean isAlways = app.packageName.equals(alwaysOnVpnPackage);
-            
-            if (i >= first && i <= last) {
-                View row = listView.getChildAt(i - first);
-                if (row != null) {
-                    TextView statusTv = row.findViewById(R.id.tv_status);
-                    if (isActive) {
-                        statusTv.setVisibility(View.VISIBLE);
-                        statusTv.setText("已连接");
-                        statusTv.setTextColor(Color.parseColor("#2E7D32"));
-                    } else if (isAlways) {
-                        statusTv.setVisibility(View.VISIBLE);
-                        statusTv.setText("始终开启");
-                        statusTv.setTextColor(Color.parseColor("#EF6C00"));
-                    } else {
-                        statusTv.setVisibility(View.GONE);
-                    }
-                }
-            }
-        }
-    }
-
-    private String findActiveVpnPackage() {
-        try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-            if (cm == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null;
-            PackageManager pm = getPackageManager();
-            for (Network network : cm.getAllNetworks()) {
-                NetworkCapabilities caps = cm.getNetworkCapabilities(network);
-                if (caps == null || !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue;
-                String[] pkgs = pm.getPackagesForUid(caps.getOwnerUid());
-                if (pkgs != null && pkgs.length > 0) return pkgs[0];
-            }
-        } catch (Exception ignored) {}
-        return null;
-    }
-
     private void scanApps() {
         final int generation = ++scanGeneration;
         final Set<String> favSnap = new HashSet<>(favoritePackages);
@@ -485,11 +387,14 @@ public class MainActivity extends Activity {
                     boolean isFav = favSnap.contains(pkg);
                     if (!showAll && !isAuto && !isCustom && !isFav) continue;
 
-                    Drawable icon;
-                    try {
-                        icon = pm.getApplicationIcon(ai);
-                    } catch (Exception e) {
-                        icon = pm.getDefaultActivityIcon();
+                    Drawable icon = iconCache.get(pkg);
+                    if (icon == null) {
+                        try {
+                            icon = pm.getApplicationIcon(ai);
+                        } catch (Exception e) {
+                            icon = pm.getDefaultActivityIcon();
+                        }
+                        iconCache.put(pkg, icon);
                     }
                     found.add(new AppInfo(label, pkg, icon, launch, isAuto, isCustom, isFav, formatSize(ai)));
                 }
@@ -511,7 +416,6 @@ public class MainActivity extends Activity {
                             ? "没有可启动的第三方应用"
                             : "没有识别到 VPN 应用\n勾选「显示全部应用」后，点 [+] 手动收编");
                 }
-                refreshVpnStatus();
             });
         }).start();
     }
@@ -609,7 +513,6 @@ public class MainActivity extends Activity {
                 holder.fav = convertView.findViewById(R.id.tv_favorite);
                 holder.size = convertView.findViewById(R.id.tv_size);
                 holder.mark = convertView.findViewById(R.id.tv_mark_vpn);
-                holder.status = convertView.findViewById(R.id.tv_status);
                 convertView.setTag(holder);
             } else {
                 holder = (ViewHolder) convertView.getTag();
@@ -641,18 +544,6 @@ public class MainActivity extends Activity {
                 holder.mark.setTextColor(Color.parseColor("#888888"));
             }
 
-            if (app.packageName.equals(activeVpnPackage)) {
-                holder.status.setVisibility(View.VISIBLE);
-                holder.status.setText("已连接");
-                holder.status.setTextColor(Color.parseColor("#2E7D32"));
-            } else if (app.packageName.equals(alwaysOnVpnPackage)) {
-                holder.status.setVisibility(View.VISIBLE);
-                holder.status.setText("始终开启");
-                holder.status.setTextColor(Color.parseColor("#EF6C00"));
-            } else {
-                holder.status.setVisibility(View.GONE);
-            }
-
             if (app.isDetected()) {
                 holder.check.setVisibility(View.VISIBLE);
                 holder.mark.setVisibility(View.GONE);
@@ -670,11 +561,6 @@ public class MainActivity extends Activity {
             holder.fav.setOnClickListener(v -> {
                 toggleFavorite(app.packageName);
                 holder.fav.setVisibility(app.isFavorite ? View.VISIBLE : View.GONE);
-                v.animate().cancel();
-                v.setScaleX(0.6f);
-                v.setScaleY(0.6f);
-                v.animate().scaleX(1f).scaleY(1f).setDuration(180)
-                        .setInterpolator(new OvershootInterpolator(2f)).start();
             });
 
             return convertView;
@@ -691,6 +577,5 @@ public class MainActivity extends Activity {
         TextView fav;
         TextView size;
         TextView mark;
-        TextView status;
     }
 }
