@@ -4,77 +4,104 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#D6E4F0">
-
-    <TextView
-        android:id="@+id/title_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="VPN 管理器"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:textColor="#333333"
-        android:gravity="center"
-        android:paddingTop="16dp"
-        android:paddingBottom="8dp" />
+    android:paddingTop="12dp"
+    android:background="#EAF3FF">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="18dp"
         android:paddingTop="8dp"
-        android:gravity="center_vertical">
+        android:paddingBottom="12dp">
 
-        <EditText
-            android:id="@+id/search_box"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="搜索应用或自建机场..."
-            android:textSize="14sp"
-            android:background="@android:drawable/edit_text"
-            android:padding="8dp"
-            android:inputType="text"
-            android:maxLines="1"
-            android:imeOptions="actionSearch" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/title_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="VPN 管理器"
+                android:textSize="25sp"
+                android:textStyle="bold"
+                android:textColor="#172B4D" />
+
+            <TextView
+                android:id="@+id/subtitle_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="轻松管理您的 VPN 应用"
+                android:textSize="14sp"
+                android:textColor="#7889A8" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btn_settings"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
-            android:text="⚙️ 设置"
+            android:layout_height="44dp"
+            android:minWidth="88dp"
+            android:text="⚙ 设置"
             android:textSize="14sp"
+            android:textColor="#172B4D"
+            android:background="#FFFFFF"
             android:paddingStart="12dp"
             android:paddingEnd="12dp" />
     </LinearLayout>
+
+    <EditText
+        android:id="@+id/search_box"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="8dp"
+        android:background="@android:drawable/edit_text"
+        android:hint="⌕  搜索应用或自建机场..."
+        android:textSize="16sp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
-        android:paddingEnd="12dp">
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp">
 
         <CheckBox
             android:id="@+id/show_all_checkbox"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="显示全部应用"
-            android:textSize="14sp"
-            android:textColor="#555555" />
+            android:textSize="15sp"
+            android:textColor="#172B4D"
+            android:buttonTint="#2878E8" />
 
         <TextView
             android:id="@+id/tv_help"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=" ❓ "
-            android:textSize="16sp"
-            android:padding="8dp" />
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="8dp"
+            android:gravity="center"
+            android:text="?"
+            android:textSize="19sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="#2878E8" />
     </LinearLayout>
 
     <FrameLayout
@@ -87,8 +114,13 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@android:color/transparent"
+            android:clipToPadding="false"
+            android:paddingTop="4dp"
+            android:paddingBottom="10dp"
             android:divider="@null"
-            android:dividerHeight="0dp" />
+            android:dividerHeight="0dp"
+            android:cacheColorHint="@android:color/transparent"
+            android:scrollbars="none" />
 
         <TextView
             android:id="@+id/empty_view"
@@ -98,7 +130,7 @@
             android:padding="24dp"
             android:text="正在扫描…"
             android:textSize="15sp"
-            android:textColor="#555555" />
+            android:textColor="#7889A8" />
     </FrameLayout>
 
-</LinearLayout>
+</LinearLayout>utton            andr
