@@ -216,9 +216,9 @@ public class MainActivity extends Activity {
         rootLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{currentTheme.backgroundStart, currentTheme.backgroundEnd}));
         titleText.setTextColor(currentTheme.text); if (subtitleText != null) subtitleText.setTextColor(currentTheme.secondary);
         showAllCheckbox.setTextColor(currentTheme.text); tvHelp.setTextColor(Color.WHITE); tvHelp.setBackground(circleDrawable(currentTheme.accent)); emptyView.setTextColor(currentTheme.secondary);
-        searchBox.setTextColor(currentTheme.text); searchBox.setHintTextColor(currentTheme.secondary); searchBox.setBackground(roundDrawable(currentTheme.searchBackground, currentTheme.stroke, dp(18)));
+        searchBox.setTextColor(currentTheme.text); searchBox.setHintTextColor(currentTheme.secondary); searchBox.setBackground(roundDrawable(currentTheme.searchBackground, currentTheme.cardStroke, dp(18)));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) showAllCheckbox.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{currentTheme.accent, currentTheme.secondary}));
-        btnSettings.setTextColor(currentTheme.text); btnSettings.setBackground(roundDrawable(currentTheme.card, currentTheme.stroke, dp(16))); btnSettings.setAllCaps(false);
+        btnSettings.setTextColor(currentTheme.text); btnSettings.setBackground(roundDrawable(currentTheme.card, currentTheme.cardStroke, dp(16))); btnSettings.setAllCaps(false);
         if (p) prefs.edit().putInt(KEY_THEME, w).apply(); if (adapter != null) adapter.notifyDataSetChanged();
     }
 
@@ -265,7 +265,9 @@ public class MainActivity extends Activity {
         apps.clear(); if (q == null || q.isEmpty()) apps.addAll(allApps);
         else { String lq = q.toLowerCase(Locale.ROOT); for (AppInfo a : allApps) if (a.label.toLowerCase(Locale.ROOT).contains(lq) || a.packageName.toLowerCase(Locale.ROOT).contains(lq)) apps.add(a); }
         adapter.notifyDataSetChanged();
-    }private static class AppInfo {
+    }            
+
+private static class AppInfo {
         final String label, packageName, sizeStr; final Drawable icon; final Intent launchIntent; final boolean isAutoDetected, isVirtual;
         boolean isCustom, isFavorite; String mark; int absoluteIndex;
         AppInfo(String l, String p, Drawable i, Intent in, boolean a, boolean c, boolean f, String m, String s, boolean v) { label = l; packageName = p; icon = i; launchIntent = in; isAutoDetected = a; isCustom = c; isFavorite = f; mark = m; sizeStr = s; isVirtual = v; }
