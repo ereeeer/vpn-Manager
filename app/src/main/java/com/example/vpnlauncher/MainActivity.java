@@ -37,7 +37,9 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import org.json.JSONObject;
+
 import java.io.File;
 import java.text.Collator;
 import java.util.ArrayList;
@@ -51,247 +53,841 @@ import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends Activity {
-    private static final String PREFS = "VpnManagerPrefs", KEY_FAV = "favorites", KEY_CUSTOM = "custom_vpns", KEY_MARKS = "app_marks", KEY_VIRTUAL = "virtual_airports", KEY_THEME = "theme_index", KEY_SHOW_ALL = "show_all", VPN_SERVICE_ACTION = "android.net.VpnService";
-    private static final String[] KEYWORDS = {"vpn", "代理", "proxy", "加速", "梯子", "翻墙", "clash", "v2ray", "xray", "ssr", "shadowsocks", "surfboard", "trojan", "wireguard", "openvpn", "hysteria", "sing-box", "singbox", "nekobox", "sagernet", "outline", "hiddify", "roxi", "tuic"};
-    private static final String[] THEME_NAMES = {"渐变蓝", "深色夜间", "护眼绿", "薰衣草紫", "暖橙米色", "薄荷青"};
+
+    private static final String PREFS = "VpnManagerPrefs";
+    private static final String KEY_FAV = "favorites";
+    private static final String KEY_CUSTOM = "custom_vpns";
+    private static final String KEY_MARKS = "app_marks";
+    private static final String KEY_VIRTUAL = "virtual_airports";
+    private static final String KEY_THEME = "theme_index";
+    private static final String KEY_SHOW_ALL = "show_all";
+    private static final String VPN_SERVICE_ACTION = "android.net.VpnService";
+
+    private static final String[] KEYWORDS = {
+            "vpn", "代理", "proxy", "加速", "梯子", "翻墙",
+            "clash", "v2ray", "xray", "ssr", "shadowsocks",
+            "surfboard", "trojan", "wireguard", "openvpn",
+            "hysteria", "sing-box", "singbox", "nekobox",
+            "sagernet", "outline", "hiddify", "roxi", "tuic"
+    };
+
+    private static final String[] THEME_NAMES = {
+            "渐变蓝", "深色夜间", "护眼绿",
+            "薰衣草紫", "暖橙米色", "薄荷青"
+    };
 
     private LinearLayout rootLayout;
-    private TextView titleText, subtitleText, emptyView, tvHelp, btnClearSearch;
+    private LinearLayout searchContainer;
+
+    private TextView titleText;
+    private TextView subtitleText;
+    private TextView emptyView;
+    private TextView tvHelp;
+    private TextView btnClearSearch;
+
     private ListView listView;
     private Button btnSettings;
     private EditText searchBox;
     private CheckBox showAllCheckbox;
+
     private AppAdapter adapter;
-    private final LruCache<String, Drawable> iconCache = new LruCache<>(150);
+
+    private final LruCache<String, Drawable> iconCache =
+            new LruCache<>(150);
+
     private ThemeColors currentTheme = ThemeColors.THEMES[0];
-    private boolean isShowAll = false, receiverRegistered = false;
+
+    private boolean isShowAll = false;
+    private boolean receiverRegistered = false;
+
     private int scanGeneration = 0;
-    private final List<AppInfo> allApps = new ArrayList<>(), apps = new ArrayList<>();
+
+    private final List<AppInfo> allApps = new ArrayList<>();
+    private final List<AppInfo> apps = new ArrayList<>();
+
     private SharedPreferences prefs;
-    private Set<String> favoritePackages = new HashSet<>(), customVpnPackages = new HashSet<>(), virtualAirports = new HashSet<>();
+
+    private Set<String> favoritePackages = new HashSet<>();
+    private Set<String> customVpnPackages = new HashSet<>();
+    private Set<String> virtualAirports = new HashSet<>();
+
     private Map<String, String> appMarks = new HashMap<>();
 
-    private final BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
-        @Override public void onReceive(Context context, Intent intent) {
+    private final BroadcastReceiver uninstallReceiver =
+            new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
             String action = intent.getAction();
+
             if (action == null) return;
+
             if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
-                if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return;
-                String pkg = intent.getData() != null ? intent.getData().getSchemeSpecificPart() : null;
-                if (pkg != null) { favoritePackages.remove(pkg); customVpnPackages.remove(pkg); appMarks.remove(pkg); saveSets(); }
+
+                if (intent.getBooleanExtra(
+                        Intent.EXTRA_REPLACING, false)) {
+                    return;
+                }
+
+                String pkg = intent.getData() != null
+                        ? intent.getData().getSchemeSpecificPart()
+                        : null;
+
+                if (pkg != null) {
+                    favoritePackages.remove(pkg);
+                    customVpnPackages.remove(pkg);
+                    appMarks.remove(pkg);
+                    saveSets();
+                }
+
                 scanApps();
-            } else if (Intent.ACTION_PACKAGE_ADDED.equals(action)) scanApps();
+
+            } else if (Intent.ACTION_PACKAGE_ADDED.equals(action)) {
+                scanApps();
+            }
         }
     };
 
-    @Override protected void onCreate(Bundle savedInstanceState) {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        favoritePackages = new HashSet<>(prefs.getStringSet(KEY_FAV, Collections.emptySet()));
-        customVpnPackages = new HashSet<>(prefs.getStringSet(KEY_CUSTOM, Collections.emptySet()));
-        virtualAirports = new HashSet<>(prefs.getStringSet(KEY_VIRTUAL, Collections.emptySet()));
+
+        favoritePackages = new HashSet<>(
+                prefs.getStringSet(KEY_FAV, Collections.emptySet()));
+
+        customVpnPackages = new HashSet<>(
+                prefs.getStringSet(KEY_CUSTOM, Collections.emptySet()));
+
+        virtualAirports = new HashSet<>(
+                prefs.getStringSet(KEY_VIRTUAL, Collections.emptySet()));
+
         migrateVirtualFavoriteKeys();
         loadMarks();
+
         isShowAll = prefs.getBoolean(KEY_SHOW_ALL, false);
+
         rootLayout = findViewById(R.id.root_layout);
         titleText = findViewById(R.id.title_text);
         subtitleText = findViewById(R.id.subtitle_text);
         emptyView = findViewById(R.id.empty_view);
         listView = findViewById(R.id.list);
         btnSettings = findViewById(R.id.btn_settings);
+        searchContainer = findViewById(R.id.search_container);
         searchBox = findViewById(R.id.search_box);
         showAllCheckbox = findViewById(R.id.show_all_checkbox);
         tvHelp = findViewById(R.id.tv_help);
         btnClearSearch = findViewById(R.id.btn_clear_search);
+
         adapter = new AppAdapter();
+
         listView.setEmptyView(emptyView);
         listView.setAdapter(adapter);
+
         applyTheme(prefs.getInt(KEY_THEME, 0), false);
+
         showAllCheckbox.setOnCheckedChangeListener(null);
         showAllCheckbox.setChecked(isShowAll);
-        showAllCheckbox.setOnCheckedChangeListener((v, c) -> { isShowAll = c; prefs.edit().putBoolean(KEY_SHOW_ALL, c).apply(); scanApps(); });
-        tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("使用说明").setMessage("【设置中心】点击右上角「设置」，可以添加自建机场、切换界面主题。\n\n【自动刷新】安装、卸载应用以及修改标签、增删机场后，列表会自动更新。\n\n【点击应用】弹出菜单，可打开、打标签、卸载等。\n\n【长按收藏】长按任意条目可直接置顶收藏。").setPositiveButton("我知道了", null).show());
-        btnClearSearch.setOnClickListener(v -> searchBox.setText(""));
+
+        showAllCheckbox.setOnCheckedChangeListener(
+                (buttonView, checked) -> {
+
+            isShowAll = checked;
+
+            prefs.edit()
+                    .putBoolean(KEY_SHOW_ALL, checked)
+                    .apply();
+
+            scanApps();
+        });
+
+        tvHelp.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("使用说明")
+                        .setMessage(
+                                "【设置中心】点击右上角「设置」，可以添加自建机场、切换界面主题。\n\n"
+                                + "【自动刷新】安装、卸载应用以及修改标签、增删机场后，列表会自动更新。\n\n"
+                                + "【点击应用】弹出菜单，可打开、打标签、卸载等。\n\n"
+                                + "【长按收藏】长按任意条目可直接置顶收藏。")
+                        .setPositiveButton("我知道了", null)
+                        .show());
+
+        btnClearSearch.setOnClickListener(
+                v -> searchBox.setText(""));
+
         btnSettings.setOnClickListener(v -> {
-            String[] ops = {"➕ 添加自建机场", "🎨 切换界面主题"};
-            new AlertDialog.Builder(this).setTitle("设置").setItems(ops, (d, w) -> { if (w == 0) showAddAirportDialog(); else showThemeDialog(); }).show();
+
+            String[] ops = {
+                    "➕ 添加自建机场",
+                    "🎨 切换界面主题"
+            };
+
+            new AlertDialog.Builder(this)
+                    .setTitle("设置")
+                    .setItems(ops, (dialog, which) -> {
+
+                        if (which == 0) {
+                            showAddAirportDialog();
+                        } else {
+                            showThemeDialog();
+                        }
+                    })
+                    .show();
         });
-        listView.setOnItemClickListener((p, v, pos, id) -> { if (pos >= 0 && pos < apps.size()) showAppOptionsDialog(apps.get(pos)); });
-        listView.setOnItemLongClickListener((p, v, pos, id) -> { if (pos >= 0 && pos < apps.size()) toggleFavorite(apps.get(pos).packageName); return true; });
+
+        listView.setOnItemClickListener(
+                (parent, view, position, id) -> {
+
+            if (position >= 0 && position < apps.size()) {
+                showAppOptionsDialog(apps.get(position));
+            }
+        });
+
+        listView.setOnItemLongClickListener(
+                (parent, view, position, id) -> {
+
+            if (position >= 0 && position < apps.size()) {
+                toggleFavorite(apps.get(position).packageName);
+            }
+
+            return true;
+        });
+
         searchBox.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
-            @Override public void onTextChanged(CharSequence s, int st, int b, int c) { filterApps(s.toString()); }
-            @Override public void afterTextChanged(Editable s) { btnClearSearch.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE); }
+
+            @Override
+            public void beforeTextChanged(
+                    CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(
+                    CharSequence s, int start, int before, int count) {
+
+                filterApps(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+                btnClearSearch.setVisibility(
+                        s.length() > 0
+                                ? View.VISIBLE
+                                : View.GONE);
+            }
         });
-        IntentFilter f = new IntentFilter(); f.addAction(Intent.ACTION_PACKAGE_REMOVED); f.addAction(Intent.ACTION_PACKAGE_ADDED); f.addDataScheme("package");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(uninstallReceiver, f, Context.RECEIVER_NOT_EXPORTED); else registerReceiver(uninstallReceiver, f);
+
+        IntentFilter filter = new IntentFilter();
+
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        filter.addDataScheme("package");
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+            registerReceiver(
+                    uninstallReceiver,
+                    filter,
+                    Context.RECEIVER_NOT_EXPORTED);
+
+        } else {
+            registerReceiver(uninstallReceiver, filter);
+        }
+
         receiverRegistered = true;
+
         scanApps();
     }
 
-    @Override protected void onDestroy() {
+    @Override
+    protected void onDestroy() {
+
         super.onDestroy();
-        if (receiverRegistered) { try { unregisterReceiver(uninstallReceiver); } catch (Exception e) {} receiverRegistered = false; }
+
+        if (receiverRegistered) {
+
+            try {
+                unregisterReceiver(uninstallReceiver);
+            } catch (Exception ignored) {
+            }
+
+            receiverRegistered = false;
+        }
     }
 
-    private static String virtualPackageKey(String name) { return "virtual_" + Base64.encodeToString(name.getBytes(java.nio.charset.StandardCharsets.UTF_8), Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING); }
+    private static String virtualPackageKey(String name) {
+
+        return "virtual_" + Base64.encodeToString(
+                name.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                Base64.URL_SAFE
+                        | Base64.NO_WRAP
+                        | Base64.NO_PADDING);
+    }
+
     private void migrateVirtualFavoriteKeys() {
+
         boolean changed = false;
+
         for (String name : virtualAirports) {
-            String oldKey = "virtual_" + name.hashCode(); String newKey = virtualPackageKey(name);
-            if (favoritePackages.remove(oldKey)) { favoritePackages.add(newKey); changed = true; }
+
+            String oldKey = "virtual_" + name.hashCode();
+            String newKey = virtualPackageKey(name);
+
+            if (favoritePackages.remove(oldKey)) {
+                favoritePackages.add(newKey);
+                changed = true;
+            }
         }
+
         if (changed) saveSets();
     }
+
     private void loadMarks() {
+
         appMarks.clear();
+
         try {
-            JSONObject jsonObject = new JSONObject(prefs.getString(KEY_MARKS, "{}")); Iterator<String> keys = jsonObject.keys();
-            while (keys.hasNext()) { String key = keys.next(); appMarks.put(key, jsonObject.getString(key)); }
-        } catch (Exception ignored) {}
-    }
-    private void saveSets() { prefs.edit().putStringSet(KEY_FAV, new HashSet<>(favoritePackages)).putStringSet(KEY_CUSTOM, new HashSet<>(customVpnPackages)).putStringSet(KEY_VIRTUAL, new HashSet<>(virtualAirports)).putString(KEY_MARKS, new JSONObject(appMarks).toString()).apply(); }
-    
-    private void showAddAirportDialog() {
-        final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setHint("例如：一元机场、XX专线");
-        new AlertDialog.Builder(this).setTitle("添加自建机场").setView(input).setPositiveButton("添加", (dialog, which) -> {
-            String name = input.getText().toString().trim();
-            if (!name.isEmpty()) { if (virtualAirports.contains(name)) Toast.makeText(this, "该机场已存在", Toast.LENGTH_SHORT).show(); else { virtualAirports.add(name); saveSets(); scanApps(); } }
-        }).setNegativeButton("取消", null).show();
-    }
-    private void showRenameAirportDialog(AppInfo app) {
-        final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setText(app.label);
-        new AlertDialog.Builder(this).setTitle("修改机场名称").setView(input).setPositiveButton("保存", (dialog, which) -> {
-            String newName = input.getText().toString().trim();
-            if (!newName.isEmpty() && !newName.equals(app.label)) {
-                if (virtualAirports.contains(newName)) { Toast.makeText(this, "该机场名称已存在", Toast.LENGTH_SHORT).show(); return; }
-                String oldKey = app.packageName, newKey = virtualPackageKey(newName);
-                if (favoritePackages.remove(oldKey)) favoritePackages.add(newKey);
-                virtualAirports.remove(app.label); virtualAirports.add(newName); saveSets(); scanApps();
+
+            JSONObject jsonObject = new JSONObject(
+                    prefs.getString(KEY_MARKS, "{}"));
+
+            Iterator<String> keys = jsonObject.keys();
+
+            while (keys.hasNext()) {
+
+                String key = keys.next();
+
+                appMarks.put(key, jsonObject.getString(key));
             }
-        }).setNegativeButton("取消", null).show();
-    }
-    private void deleteAirport(AppInfo app) {
-        new AlertDialog.Builder(this).setTitle("删除机场").setMessage("确定删除自建机场「" + app.label + "」？").setPositiveButton("删除", (dialog, which) -> {
-            virtualAirports.remove(app.label); favoritePackages.remove(app.packageName); saveSets(); scanApps();
-        }).setNegativeButton("取消", null).show();
-    }
-    private void showAppOptionsDialog(AppInfo app) {
-        List<String> options = new ArrayList<>(); List<Runnable> actions = new ArrayList<>();
-        if (app.isVirtual) {
-            options.add("📝 修改名称"); actions.add(() -> showRenameAirportDialog(app));
-            options.add("🗑️ 删除机场"); actions.add(() -> deleteAirport(app));
-        } else {
-            options.add("🚀 打开应用"); actions.add(() -> { if (app.launchIntent != null) { try { startActivity(app.launchIntent); } catch (Exception e) { Toast.makeText(this, "无法启动", Toast.LENGTH_SHORT).show(); } } });
-            options.add("🏷️ 添加/修改标签"); actions.add(() -> showMarkDialog(app));
-            options.add("📋 复制包名"); actions.add(() -> copyPackage(app.packageName));
-            options.add("⚙️ 应用信息"); actions.add(() -> jumpToSettings(app.packageName));
-            if (app.isCustom) { options.add("❌ 取消收编"); actions.add(() -> unmarkVpn(app.packageName)); }
-            options.add("🗑️ 卸载应用"); actions.add(() -> confirmUninstall(app));
+
+        } catch (Exception ignored) {
         }
-        new AlertDialog.Builder(this).setTitle(app.label).setItems(options.toArray(new String[0]), (dialog, which) -> actions.get(which).run()).show();
     }
+
+    private void saveSets() {
+
+        prefs.edit()
+                .putStringSet(
+                        KEY_FAV,
+                        new HashSet<>(favoritePackages))
+                .putStringSet(
+                        KEY_CUSTOM,
+                        new HashSet<>(customVpnPackages))
+                .putStringSet(
+                        KEY_VIRTUAL,
+                        new HashSet<>(virtualAirports))
+                .putString(
+                        KEY_MARKS,
+                        new JSONObject(appMarks).toString())
+                .apply();
+    }
+
+    private void showAddAirportDialog() {
+
+        final EditText input = new EditText(this);
+
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setHint("例如：一元机场、XX专线");
+
+        new AlertDialog.Builder(this)
+                .setTitle("添加自建机场")
+                .setView(input)
+                .setPositiveButton("添加", (dialog, which) -> {
+
+                    String name = input.getText()
+                            .toString()
+                            .trim();
+
+                    if (!name.isEmpty()) {
+
+                        if (virtualAirports.contains(name)) {
+
+                            Toast.makeText(
+                                    this,
+                                    "该机场已存在",
+                                    Toast.LENGTH_SHORT).show();
+
+                        } else {
+
+                            virtualAirports.add(name);
+                            saveSets();
+                            scanApps();
+                        }
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showRenameAirportDialog(AppInfo app) {
+
+        final EditText input = new EditText(this);
+
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setText(app.label);
+
+        new AlertDialog.Builder(this)
+                .setTitle("修改机场名称")
+                .setView(input)
+                .setPositiveButton("保存", (dialog, which) -> {
+
+                    String newName = input.getText()
+                            .toString()
+                            .trim();
+
+                    if (!newName.isEmpty()
+                            && !newName.equals(app.label)) {
+
+                        if (virtualAirports.contains(newName)) {
+
+                            Toast.makeText(
+                                    this,
+                                    "该机场名称已存在",
+                                    Toast.LENGTH_SHORT).show();
+
+                            return;
+                        }
+
+                        String oldKey = app.packageName;
+                        String newKey = virtualPackageKey(newName);
+
+                        if (favoritePackages.remove(oldKey)) {
+                            favoritePackages.add(newKey);
+                        }
+
+                        virtualAirports.remove(app.label);
+                        virtualAirports.add(newName);
+
+                        saveSets();
+                        scanApps();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void deleteAirport(AppInfo app) {
+
+        new AlertDialog.Builder(this)
+                .setTitle("删除机场")
+                .setMessage(
+                        "确定删除自建机场「" + app.label + "」？")
+                .setPositiveButton("删除", (dialog, which) -> {
+
+                    virtualAirports.remove(app.label);
+                    favoritePackages.remove(app.packageName);
+
+                    saveSets();
+                    scanApps();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showAppOptionsDialog(AppInfo app) {
+
+        List<String> options = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+
+        if (app.isVirtual) {
+
+            options.add("📝 修改名称");
+            actions.add(() -> showRenameAirportDialog(app));
+
+            options.add("🗑️ 删除机场");
+            actions.add(() -> deleteAirport(app));
+
+        } else {
+
+            options.add("🚀 打开应用");
+
+            actions.add(() -> {
+
+                if (app.launchIntent != null) {
+
+                    try {
+                        startActivity(app.launchIntent);
+                    } catch (Exception e) {
+
+                        Toast.makeText(
+                                this,
+                                "无法启动",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+            options.add("🏷️ 添加/修改标签");
+            actions.add(() -> showMarkDialog(app));
+
+            options.add("📋 复制包名");
+            actions.add(() -> copyPackage(app.packageName));
+
+            options.add("⚙️ 应用信息");
+            actions.add(() -> jumpToSettings(app.packageName));
+
+            if (app.isCustom) {
+
+                options.add("❌ 取消收编");
+                actions.add(() -> unmarkVpn(app.packageName));
+            }
+
+            options.add("🗑️ 卸载应用");
+            actions.add(() -> confirmUninstall(app));
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(app.label)
+                .setItems(
+                        options.toArray(new String[0]),
+                        (dialog, which) -> actions.get(which).run())
+                .show();
+    }
+
     private void showMarkDialog(AppInfo app) {
-        String[] marks = {"最低收费", "最高收费", "稳定", "下载速度快", "免费好用", "清除标签"};
-        new AlertDialog.Builder(this).setTitle("选择标签").setItems(marks, (dialog, which) -> {
-            if (which == 5) { appMarks.remove(app.packageName); saveSets(); scanApps(); } else applyMark(app.packageName, marks[which]);
-        }).show();
+
+        String[] marks = {
+                "最低收费",
+                "最高收费",
+                "稳定",
+                "下载速度快",
+                "免费好用",
+                "清除标签"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("选择标签")
+                .setItems(marks, (dialog, which) -> {
+
+                    if (which == 5) {
+
+                        appMarks.remove(app.packageName);
+                        saveSets();
+                        scanApps();
+
+                    } else {
+
+                        applyMark(
+                                app.packageName,
+                                marks[which]);
+                    }
+                })
+                .show();
     }
-    private void applyMark(String p, String m) { appMarks.put(p, m); customVpnPackages.add(p); saveSets(); scanApps(); }
-    private void unmarkVpn(String p) { customVpnPackages.remove(p); appMarks.remove(p); saveSets(); scanApps(); }
-    private void toggleFavorite(String p) {
-        if (favoritePackages.contains(p)) favoritePackages.remove(p); else favoritePackages.add(p); saveSets();
-        for (AppInfo a : allApps) a.isFavorite = favoritePackages.contains(a.packageName);
-        int f = listView.getFirstVisiblePosition(); View v = listView.getChildAt(0); int t = v == null ? 0 : v.getTop();
-        sortAndAssignIndex(); filterApps(searchBox.getText().toString()); listView.setSelectionFromTop(f, t);
+
+    private void applyMark(String packageName, String mark) {
+
+        appMarks.put(packageName, mark);
+        customVpnPackages.add(packageName);
+
+        saveSets();
+        scanApps();
     }
-    private void copyPackage(String p) { ClipboardManager c = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE); if (c != null) { c.setPrimaryClip(ClipData.newPlainText("Package Name", p)); Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show(); } }
-    private void confirmUninstall(AppInfo a) {
-        new AlertDialog.Builder(this).setTitle("卸载").setMessage("确定卸载「" + a.label + "」？").setNegativeButton("取消", null).setPositiveButton("卸载", (d, w) -> { try { startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.packageName))); } catch (Exception e) { jumpToSettings(a.packageName); } }).show();
+
+    private void unmarkVpn(String packageName) {
+
+        customVpnPackages.remove(packageName);
+        appMarks.remove(packageName);
+
+        saveSets();
+        scanApps();
     }
+
+    private void toggleFavorite(String packageName) {
+
+        if (favoritePackages.contains(packageName)) {
+            favoritePackages.remove(packageName);
+        } else {
+            favoritePackages.add(packageName);
+        }
+
+        saveSets();
+
+        for (AppInfo app : allApps) {
+            app.isFavorite =
+                    favoritePackages.contains(app.packageName);
+        }
+
+        int first = listView.getFirstVisiblePosition();
+
+        View view = listView.getChildAt(0);
+
+        int top = view == null ? 0 : view.getTop();
+
+        sortAndAssignIndex();
+
+        filterApps(searchBox.getText().toString());
+
+        listView.setSelectionFromTop(first, top);
+    }
+
+    private void copyPackage(String packageName) {
+
+        ClipboardManager clipboard =
+                (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+
+        if (clipboard != null) {
+
+            clipboard.setPrimaryClip(
+                    ClipData.newPlainText(
+                            "Package Name",
+                            packageName));
+
+            Toast.makeText(
+                    this,
+                    "已复制",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void confirmUninstall(AppInfo app) {
+
+        new AlertDialog.Builder(this)
+                .setTitle("卸载")
+                .setMessage("确定卸载「" + app.label + "」？")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("卸载", (dialog, which) -> {
+
+                    try {
+
+                        startActivity(new Intent(
+                                Intent.ACTION_DELETE,
+                                Uri.parse("package:" + app.packageName)));
+
+                    } catch (Exception e) {
+
+                        jumpToSettings(app.packageName);
+                    }
+                })
+                .show();
+    }
+
     private void showThemeDialog() {
-        int s = prefs.getInt(KEY_THEME, 0); if (s < 0 || s >= THEME_NAMES.length) s = 0;
-        new AlertDialog.Builder(this).setTitle("选择主题").setSingleChoiceItems(THEME_NAMES, s, (d, w) -> { applyTheme(w, true); d.dismiss(); }).setNegativeButton("取消", null).show();
+
+        int selected = prefs.getInt(KEY_THEME, 0);
+
+        if (selected < 0 || selected >= THEME_NAMES.length) {
+            selected = 0;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("选择主题")
+                .setSingleChoiceItems(
+                        THEME_NAMES,
+                        selected,
+                        (dialog, which) -> {
+
+                            applyTheme(which, true);
+                            dialog.dismiss();
+                        })
+                .setNegativeButton("取消", null)
+                .show();
     }
-    private void applyTheme(int w, boolean p) {
-        if (w < 0 || w >= ThemeColors.THEMES.length) w = 0;
-        currentTheme = ThemeColors.THEMES[w];
-        rootLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{currentTheme.backgroundStart, currentTheme.backgroundEnd}));
-        titleText.setTextColor(currentTheme.text); if (subtitleText != null) subtitleText.setTextColor(currentTheme.secondary);
-        showAllCheckbox.setTextColor(currentTheme.text); tvHelp.setTextColor(Color.WHITE); tvHelp.setBackground(circleDrawable(currentTheme.accent)); emptyView.setTextColor(currentTheme.secondary);
-        searchBox.setTextColor(currentTheme.text); searchBox.setHintTextColor(currentTheme.secondary); searchBox.setBackground(roundDrawable(currentTheme.searchBackground, currentTheme.cardStroke, dp(18)));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) showAllCheckbox.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{currentTheme.accent, currentTheme.secondary}));
-        btnSettings.setTextColor(currentTheme.text); btnSettings.setBackground(roundDrawable(currentTheme.card, currentTheme.cardStroke, dp(16))); btnSettings.setAllCaps(false);
+
+    private void applyTheme(int themeIndex, boolean save) {
+
+        if (themeIndex < 0
+                || themeIndex >= ThemeColors.THEMES.length) {
+            themeIndex = 0;
+        }
+
+        currentTheme = ThemeColors.THEMES[themeIndex];
+
+        rootLayout.setBackground(new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        currentTheme.backgroundStart,
+                        currentTheme.backgroundEnd
+                }));
+
+        titleText.setTextColor(currentTheme.text);
+
+        if (subtitleText != null) {
+            subtitleText.setTextColor(currentTheme.secondary);
+        }
+
+        showAllCheckbox.setTextColor(currentTheme.text);
+
+        tvHelp.setTextColor(Color.WHITE);
+        tvHelp.setBackground(
+                circleDrawable(currentTheme.accent));
+
+        emptyView.setTextColor(currentTheme.secondary);
+
+        searchBox.setTextColor(currentTheme.text);
+        searchBox.setHintTextColor(currentTheme.secondary);
+
+        // 搜索框外层负责圆角背景，输入框本身保持透明。
+        if (searchContainer != null) {
+
+            searchContainer.setBackground(roundDrawable(
+                    currentTheme.searchBackground,
+                    currentTheme.cardStroke,
+                    dp(18)));
+        }
+
+        searchBox.setBackgroundColor(Color.TRANSPARENT);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+
+            showAllCheckbox.setButtonTintList(
+                    new ColorStateList(
+                            new int[][]{
+                                    new int[]{
+                                            android.R.attr.state_checked
+                                    },
+                                    new int[]{}
+                            },
+                            new int[]{
+                                    currentTheme.accent,
+                                    currentTheme.secondary
+                            }));
+        }
+
+        btnSettings.setTextColor(currentTheme.text);
+
+        btnSettings.setBackground(roundDrawable(
+                currentTheme.card,
+                currentTheme.cardStroke,
+                dp(16)));
+
+        btnSettings.setAllCaps(false);
+
         btnClearSearch.setTextColor(currentTheme.secondary);
-        if (p) prefs.edit().putInt(KEY_THEME, w).apply(); if (adapter != null) adapter.notifyDataSetChanged();
-    } 
-private GradientDrawable roundDrawable(int color, int stroke, int radius) {
+
+        if (save) {
+            prefs.edit()
+                    .putInt(KEY_THEME, themeIndex)
+                    .apply();
+        }
+
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private GradientDrawable roundDrawable(
+            int color,
+            int stroke,
+            int radius) {
+
         GradientDrawable drawable = new GradientDrawable();
+
         drawable.setColor(color);
         drawable.setCornerRadius(radius);
+
         if (stroke != Color.TRANSPARENT) {
             drawable.setStroke(dp(1), stroke);
         }
+
         return drawable;
     }
 
     private GradientDrawable circleDrawable(int color) {
+
         GradientDrawable drawable = new GradientDrawable();
+
         drawable.setShape(GradientDrawable.OVAL);
         drawable.setColor(color);
+
         return drawable;
     }
 
     private int dp(float value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+
+        return (int) (
+                value
+                        * getResources()
+                        .getDisplayMetrics()
+                        .density
+                        + 0.5f);
     }
 
     private void jumpToSettings(String packageName) {
+
         try {
-            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-            intent.setData(Uri.parse("package:" + packageName));
+
+            Intent intent = new Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+
+            intent.setData(
+                    Uri.parse("package:" + packageName));
+
             startActivity(intent);
+
         } catch (Exception e) {
-            Toast.makeText(this, "无法打开设置页", Toast.LENGTH_SHORT).show();
+
+            Toast.makeText(
+                    this,
+                    "无法打开设置页",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
     private void scanApps() {
+
         final int generation = ++scanGeneration;
-        final Set<String> favSnap = new HashSet<>(favoritePackages);
-        final Set<String> customSnap = new HashSet<>(customVpnPackages);
-        final Map<String, String> marksSnap = new HashMap<>(appMarks);
-        final Set<String> virtualSnap = new HashSet<>(virtualAirports);
+
+        final Set<String> favSnap =
+                new HashSet<>(favoritePackages);
+
+        final Set<String> customSnap =
+                new HashSet<>(customVpnPackages);
+
+        final Map<String, String> marksSnap =
+                new HashMap<>(appMarks);
+
+        final Set<String> virtualSnap =
+                new HashSet<>(virtualAirports);
+
         final boolean showAll = isShowAll;
+
         final String self = getPackageName();
 
         emptyView.setText("正在扫描…");
 
         int first = listView.getFirstVisiblePosition();
+
         View topView = listView.getChildAt(0);
+
         int top = topView == null ? 0 : topView.getTop();
 
         Thread scanThread = new Thread(() -> {
+
             List<AppInfo> found = new ArrayList<>();
+
             String scanError = null;
 
             try {
+
                 PackageManager pm = getPackageManager();
+
                 Set<String> vpnPackages = new HashSet<>();
 
                 List<ResolveInfo> vpnServices =
-                        pm.queryIntentServices(new Intent(VPN_SERVICE_ACTION), 0);
+                        pm.queryIntentServices(
+                                new Intent(VPN_SERVICE_ACTION),
+                                0);
 
                 if (vpnServices != null) {
-                    for (ResolveInfo ri : vpnServices) {
-                        if (ri.serviceInfo != null) {
-                            vpnPackages.add(ri.serviceInfo.packageName);
+
+                    for (ResolveInfo info : vpnServices) {
+
+                        if (info.serviceInfo != null) {
+
+                            vpnPackages.add(
+                                    info.serviceInfo.packageName);
                         }
                     }
                 }
 
                 Intent launcher = new Intent(Intent.ACTION_MAIN);
+
                 launcher.addCategory(Intent.CATEGORY_LAUNCHER);
 
                 List<ResolveInfo> activities =
@@ -300,437 +896,241 @@ private GradientDrawable roundDrawable(int color, int stroke, int radius) {
                 Set<String> seen = new HashSet<>();
 
                 if (activities != null) {
-                    for (ResolveInfo ri : activities) {
-                        if (ri.activityInfo == null) continue;
 
-                        String pkg = ri.activityInfo.packageName;
+                    for (ResolveInfo info : activities) {
 
-                        if (!seen.add(pkg) || self.equals(pkg)) continue;
+                        if (info.activityInfo == null) continue;
 
-                        ApplicationInfo ai;
+                        String packageName =
+                                info.activityInfo.packageName;
+
+                        if (!seen.add(packageName)
+                                || self.equals(packageName)) {
+                            continue;
+                        }
+
+                        ApplicationInfo appInfo;
+
                         try {
-                            ai = pm.getApplicationInfo(pkg, 0);
-                        } catch (PackageManager.NameNotFoundException e) {
+
+                            appInfo = pm.getApplicationInfo(
+                                    packageName, 0);
+
+                        } catch (
+                                PackageManager.NameNotFoundException e) {
                             continue;
                         }
 
-                        if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
+                        if ((appInfo.flags
+                                & ApplicationInfo.FLAG_SYSTEM) != 0) {
                             continue;
                         }
 
-                        Intent launch = pm.getLaunchIntentForPackage(pkg);
-                        if (launch == null) continue;
+                        Intent launchIntent =
+                                pm.getLaunchIntentForPackage(packageName);
 
-                        CharSequence labelCs = pm.getApplicationLabel(ai);
-                        String label = labelCs == null ? pkg : labelCs.toString();
+                        if (launchIntent == null) continue;
 
-                        String mark = marksSnap.get(pkg);
+                        CharSequence labelCs =
+                                pm.getApplicationLabel(appInfo);
+
+                        String label = labelCs == null
+                                ? packageName
+                                : labelCs.toString();
+
+                        String mark = marksSnap.get(packageName);
 
                         boolean isAuto =
-                                vpnPackages.contains(pkg) || matchesKeyword(label, pkg);
+                                vpnPackages.contains(packageName)
+                                || matchesKeyword(label, packageName);
 
-                        boolean isCustom = customSnap.contains(pkg);
-                        boolean isFav = favSnap.contains(pkg);
+                        boolean isCustom =
+                                customSnap.contains(packageName);
 
-                        if (!showAll && !isAuto && !isCustom
-                                && !isFav && mark == null) {
+                        boolean isFavorite =
+                                favSnap.contains(packageName);
+
+                        if (!showAll
+                                && !isAuto
+                                && !isCustom
+                                && !isFavorite
+                                && mark == null) {
                             continue;
                         }
 
-                        Drawable icon = iconCache.get(pkg);
+                        Drawable icon = iconCache.get(packageName);
 
                         if (icon == null) {
+
                             try {
-                                icon = pm.getApplicationIcon(ai);
+
+                                icon = pm.getApplicationIcon(appInfo);
+
                             } catch (Exception e) {
+
                                 icon = pm.getDefaultActivityIcon();
                             }
 
                             if (icon != null) {
-                                iconCache.put(pkg, icon);
+                                iconCache.put(packageName, icon);
                             }
                         }
 
                         found.add(new AppInfo(
-                                label, pkg, icon, launch,
-                                isAuto, isCustom, isFav,
-                                mark, formatSize(ai), false
-                        ));
+                                label,
+                                packageName,
+                                icon,
+                                launchIntent,
+                                isAuto,
+                                isCustom,
+                                isFavorite,
+                                mark,
+                                formatSize(appInfo),
+                                false));
                     }
                 }
 
                 for (String airportName : virtualSnap) {
-                    String fakePkg = virtualPackageKey(airportName);
+
+                    String fakePackage =
+                            virtualPackageKey(airportName);
+
                     Drawable icon = pm.getDefaultActivityIcon();
-                    boolean isFav = favSnap.contains(fakePkg);
+
+                    boolean isFavorite =
+                            favSnap.contains(fakePackage);
 
                     found.add(new AppInfo(
-                            airportName, fakePkg, icon, null,
-                            false, true, isFav,
-                            "机场", "自建", true
-                    ));
+                            airportName,
+                            fakePackage,
+                            icon,
+                            null,
+                            false,
+                            true,
+                            isFavorite,
+                            "机场",
+                            "自建",
+                            true));
                 }
 
             } catch (Exception e) {
+
                 scanError = e.getClass().getSimpleName()
-                        + (e.getMessage() == null ? "" : ": " + e.getMessage());
+                        + (e.getMessage() == null
+                        ? ""
+                        : ": " ++ (e.getMessage() == null
+                        ? ""
+                        : ": " + e.getMessage());
+
+                runOnUiThread(() -> {
+                    Toast.makeText(
+                            MainActivity.this,
+                            "扫描失败：" + errorMessage,
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+            } finally {
+                runOnUiThread(() -> {
+                    if (scanButton != null) {
+                        scanButton.setEnabled(true);
+                        scanButton.setText("开始扫描");
+                    }
+                });
             }
-
-            final String error = scanError;
-            final List<AppInfo> result = found;
-
-            runOnUiThread(() -> {
-                if (generation != scanGeneration
-                        || isFinishing() || isDestroyed()) {
-                    return;
-                }
-
-                if (listView.getAdapter() == null) return;
-
-                allApps.clear();
-                allApps.addAll(result);
-
-                sortAndAssignIndex();
-                filterApps(searchBox.getText().toString());
-
-                listView.post(() ->
-                        listView.setSelectionFromTop(first, top));
-
-                if (error != null) {
-                    emptyView.setText(
-                            "扫描失败：" + error
-                                    + "\n请检查应用可见性权限或稍后重试"
-                    );
-                } else if (result.isEmpty()) {
-                    emptyView.setText(showAll
-                            ? "没有可启动的第三方应用"
-                            : "没有识别到 VPN 应用\n勾选「显示全部应用」后，可手动收编");
-                } else if (apps.isEmpty()) {
-                    emptyView.setText("没有找到匹配的应用");
-                }
-            });
-
-        }, "VpnAppScanner");
-
-        scanThread.setDaemon(true);
-        scanThread.start();
-    }
-
-    private static boolean matchesKeyword(String label, String packageName) {
-        String lowerLabel = label.toLowerCase(Locale.ROOT);
-        String lowerPkg = packageName.toLowerCase(Locale.ROOT);
-
-        for (String kw : KEYWORDS) {
-            if (lowerLabel.contains(kw) || lowerPkg.contains(kw)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static String formatSize(ApplicationInfo ai) {
-        long size = 0;
-
-        try {
-            if (ai.publicSourceDir != null) {
-                size += new File(ai.publicSourceDir).length();
-            }
-
-            if (ai.splitSourceDirs != null) {
-                for (String split : ai.splitSourceDirs) {
-                    size += new File(split).length();
-                }
-            }
-        } catch (Exception ignored) {}
-
-        return String.format(
-                Locale.getDefault(),
-                "%.1f MB",
-                size / (1024.0 * 1024.0)
-        );
-    }
-
-    private void sortAndAssignIndex() {
-        Collections.sort(allApps, (a, b) -> {
-            if (a.isFavorite != b.isFavorite) {
-                return a.isFavorite ? -1 : 1;
-            }
-
-            if (a.isDetected() != b.isDetected()) {
-                return a.isDetected() ? -1 : 1;
-            }
-
-            return Collator.getInstance().compare(a.label, b.label);
-        });
-
-        for (int i = 0; i < allApps.size(); i++) {
-            allApps.get(i).absoluteIndex = i + 1;
-        }
-    }
-
-    private void filterApps(String query) {
-        apps.clear();
-
-        if (query == null || query.isEmpty()) {
-            apps.addAll(allApps);
-        } else {
-            String lowerQuery = query.toLowerCase(Locale.ROOT);
-
-            for (AppInfo app : allApps) {
-                if (app.label.toLowerCase(Locale.ROOT).contains(lowerQuery)
-                        || app.packageName.toLowerCase(Locale.ROOT)
-                        .contains(lowerQuery)) {
-                    apps.add(app);
-                }
-            }
-        }
-
-        adapter.notifyDataSetChanged();
-
-        if (apps.isEmpty() && allApps.size() > 0) {
-            emptyView.setText("没有找到匹配的应用");
-        }
-    }
-
-    private static class AppInfo {
-        final String label;
-        final String packageName;
-        final Drawable icon;
-        final Intent launchIntent;
-        final boolean isAutoDetected;
-
-        boolean isCustom;
-        boolean isFavorite;
-        String mark;
-
-        final String sizeStr;
-        final boolean isVirtual;
-
-        int absoluteIndex;
-
-        AppInfo(String label, String packageName, Drawable icon,
-                Intent launchIntent, boolean isAutoDetected,
-                boolean isCustom, boolean isFavorite,
-                String mark, String sizeStr, boolean isVirtual) {
-
-            this.label = label;
-            this.packageName = packageName;
-            this.icon = icon;
-            this.launchIntent = launchIntent;
-            this.isAutoDetected = isAutoDetected;
-            this.isCustom = isCustom;
-            this.isFavorite = isFavorite;
-            this.mark = mark;
-            this.sizeStr = sizeStr;
-            this.isVirtual = isVirtual;
-        }
-
-        boolean isDetected() {
-            return isAutoDetected || isCustom || mark != null || isVirtual;
-        }
-    }
-
-    private class AppAdapter extends BaseAdapter {
-
-        @Override
-        public int getCount() {
-            return apps.size();
-        }
-
-        @Override
-        public Object getItem(int position) {
-            return apps.get(position);
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return position;
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            ViewHolder holder;
-
-            if (convertView == null) {
-                convertView = LayoutInflater.from(MainActivity.this)
-                        .inflate(R.layout.row_app, parent, false);
-
-                holder = new ViewHolder();
-
-                holder.root = convertView.findViewById(R.id.row_root);
-                holder.index = convertView.findViewById(R.id.tv_index);
-                holder.icon = convertView.findViewById(R.id.app_icon);
-                holder.name = convertView.findViewById(R.id.app_name);
-                holder.mark = convertView.findViewById(R.id.tv_custom_mark);
-                holder.check = convertView.findViewById(R.id.check_mark);
-                holder.fav = convertView.findViewById(R.id.tv_favorite);
-                holder.size = convertView.findViewById(R.id.tv_size);
-                holder.plus = convertView.findViewById(R.id.tv_mark_vpn);
-                holder.arrow = convertView.findViewById(R.id.tv_arrow);
-
-                convertView.setTag(holder);
-            } else {
-                holder = (ViewHolder) convertView.getTag();
-            }
-
-            AppInfo app = apps.get(position);
-            ThemeColors theme = currentTheme;
-
-            holder.index.setText(String.valueOf(app.absoluteIndex));
-            holder.index.setTextColor(theme.secondary);
-            holder.index.setBackground(circleDrawable(theme.indexBackground));
-
-            if (app.isVirtual) {
-                holder.icon.setImageResource(android.R.drawable.ic_menu_compass);
-            } else {
-                holder.icon.setImageDrawable(app.icon);
-            }
-
-            holder.name.setText(app.label);
-            holder.name.setTextColor(theme.text);
-
-            holder.size.setText(app.sizeStr);
-            holder.size.setTextColor(theme.secondary);
-
-            holder.fav.setVisibility(
-                    app.isFavorite ? View.VISIBLE : View.GONE
-            );
-
-            holder.arrow.setTextColor(theme.secondary);
-
-            if (app.mark != null && !app.mark.isEmpty()) {
-                holder.mark.setText(app.mark);
-                holder.mark.setVisibility(View.VISIBLE);
-            } else {
-                holder.mark.setVisibility(View.GONE);
-            }
-
-            GradientDrawable cardBackground = new GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR,
-                    new int[]{theme.card, theme.card}
-            );
-
-            cardBackground.setCornerRadius(dp(20));
-
-            if (theme.cardStroke != Color.TRANSPARENT) {
-                cardBackground.setStroke(dp(1), theme.cardStroke);
-            }
-
-            holder.root.setBackground(cardBackground);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                holder.root.setElevation(dp(5));
-            }
-
-            if (app.isDetected()) {
-                holder.check.setVisibility(View.VISIBLE);
-                holder.check.setImageResource(R.drawable.ic_vpn_check);
-
-                holder.plus.setVisibility(View.GONE);
-                holder.plus.setOnClickListener(null);
-
-            } else if (isShowAll) {
-                holder.check.setVisibility(View.GONE);
-
-                holder.plus.setTextColor(theme.accent);
-                holder.plus.setVisibility(View.VISIBLE);
-
-                holder.plus.setOnClickListener(
-                        v -> applyMark(app.packageName, "手动收编")
-                );
-
-            } else {
-                holder.check.setVisibility(View.GONE);
-                holder.plus.setVisibility(View.GONE);
-                holder.plus.setOnClickListener(null);
-            }
-
-            holder.fav.setOnClickListener(
-                    v -> toggleFavorite(app.packageName)
-            );
-
-            return convertView;
-        }
-    }
-
-    private static class ViewHolder {
-        LinearLayout root;
-        TextView index;
-        ImageView icon;
-        TextView name;
-        TextView mark;
-        ImageView check;
-        TextView fav;
-        TextView size;
-        TextView plus;
-        TextView arrow;
-    }
-
+        }).start();
+        // ==================== 主题颜色配置 ====================
     private static class ThemeColors {
-        final int backgroundStart, backgroundEnd, card, cardStroke;
-        final int text, secondary, accent, searchBackground, indexBackground;
+
+        final int backgroundStart;
+        final int backgroundEnd;
+        final int card;
+        final int cardStroke;
+        final int text;
+        final int secondary;
+        final int accent;
+        final int searchBackground;
+        final int indexBackground;
         final boolean dark;
 
-        ThemeColors(int start, int end, int card, int stroke,
-                    int text, int secondary, int accent,
-                    int search, int index, boolean dark) {
-
-            this.backgroundStart = start;
-            this.backgroundEnd = end;
+        ThemeColors(
+                int backgroundStart,
+                int backgroundEnd,
+                int card,
+                int cardStroke,
+                int text,
+                int secondary,
+                int accent,
+                int searchBackground,
+                int indexBackground,
+                boolean dark
+        ) {
+            this.backgroundStart = backgroundStart;
+            this.backgroundEnd = backgroundEnd;
             this.card = card;
-            this.cardStroke = stroke;
+            this.cardStroke = cardStroke;
             this.text = text;
             this.secondary = secondary;
             this.accent = accent;
-            this.searchBackground = search;
-            this.indexBackground = index;
+            this.searchBackground = searchBackground;
+            this.indexBackground = indexBackground;
             this.dark = dark;
         }
 
         static final ThemeColors[] THEMES = {
 
-                // 渐变蓝
+                // 1. 渐变蓝
                 new ThemeColors(
-                        0xFFEAF3FF, 0xFFD8E8FF, 0xF7FFFFFF,
-                        0xFFDCE8FA, 0xFF172B4D, 0xFF7889A8,
-                        0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false
+                        0xFFEAF3FF, 0xFFD8E8FF,
+                        0xF7FFFFFF, 0xFFDCE8FA,
+                        0xFF172B4D, 0xFF7889A8,
+                        0xFF2878E8, 0xF9FFFFFF,
+                        0xFFE5EEFF, false
                 ),
 
-                // 深色夜间
+                // 2. 深色夜间
                 new ThemeColors(
-                        0xFF11182B, 0xFF202D4A, 0xFF27334F,
-                        0xFF3A4969, 0xFFF1F5FF, 0xFFB1BDD4,
-                        0xFF72A7FF, 0xFF303C58, 0xFF3A4969, true
+                        0xFF11182B, 0xFF202D4A,
+                        0xFF27334F, 0xFF3A4969,
+                        0xFFF1F5FF, 0xFFB1BDD4,
+                        0xFF72A7FF, 0xFF303C58,
+                        0xFF3A4969, true
                 ),
 
-                // 护眼绿
+                // 3. 护眼绿
                 new ThemeColors(
-                        0xFFEAF3E7, 0xFFDCEBDD, 0xF9FAFFF7,
-                        0xFFD5E5D1, 0xFF304B37, 0xFF718875,
-                        0xFF548B5B, 0xF9FFFFFF, 0xFFE5F0E1, false
+                        0xFFEAF3E7, 0xFFDCEBDD,
+                        0xF9FAFFF7, 0xFFD5E5D1,
+                        0xFF304B37, 0xFF718875,
+                        0xFF548B5B, 0xF9FFFFFF,
+                        0xFFE5F0E1, false
                 ),
 
-                // 薰衣草紫
+                // 4. 薰衣草紫
                 new ThemeColors(
-                        0xFFF3ECFF, 0xFFE7DCFA, 0xFAFFFFFF,
-                        0xFFE2D8F2, 0xFF3F315B, 0xFF82769B,
-                        0xFF8062C9, 0xFAFFFFFF, 0xFFEDE5FF, false
+                        0xFFF3ECFF, 0xFFE7DCFA,
+                        0xFAFFFFFF, 0xFFE2D8F2,
+                        0xFF3F315B, 0xFF82769B,
+                        0xFF8062C9, 0xFAFFFFFF,
+                        0xFFEDE5FF, false
                 ),
 
-                // 暖橙米色
+                // 5. 暖橙米色
                 new ThemeColors(
-                        0xFFFFF5E6, 0xFFFFE7C8, 0xFAFFFCF6,
-                        0xFFF0DFC8, 0xFF57432E, 0xFF927D65,
-                        0xFFC17A32, 0xFAFFFFFF, 0xFFFFEED8, false
+                        0xFFFFF5E6, 0xFFFFE7C8,
+                        0xFAFFFCF6, 0xFFF0DFC8,
+                        0xFF57432E, 0xFF927D65,
+                        0xFFC17A32, 0xFAFFFFFF,
+                        0xFFFFEED8, false
                 ),
 
-                // 薄荷青
+                // 6. 薄荷青
                 new ThemeColors(
-                        0xFFE8F7F3, 0xFFD4EEE8, 0xFAFFFFFF,
-                        0xFFD6EAE4, 0xFF285248, 0xFF718F87,
-                        0xFF278F82, 0xFAFFFFFF, 0xFFDFF2EC, false
+                        0xFFE8F7F3, 0xFFD4EEE8,
+                        0xFAFFFFFF, 0xFFD6EAE4,
+                        0xFF285248, 0xFF718F87,
+                        0xFF278F82, 0xFAFFFFFF,
+                        0xFFDFF2EC, false
                 )
         };
     }
-}
+    }
