@@ -57,24 +57,30 @@
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#212121" />
+                android:textColor="#212121"
+                android:singleLine="true"
+                android:ellipsize="end" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical">
 
-            <!-- 新增：显示标记 -->
             <TextView
                 android:id="@+id/tv_custom_mark"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="#E91E63"
+                android:textSize="11sp"
+                android:textColor="#D81B60"
                 android:textStyle="bold"
+                android:background="@drawable/mark_bg"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
                 android:layout_marginEnd="8dp"
                 android:visibility="gone" />
 
