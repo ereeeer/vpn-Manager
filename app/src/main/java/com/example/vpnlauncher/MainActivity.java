@@ -235,4 +235,4 @@ public class MainActivity extends Activity {
             new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFAFFFFFF, 0xFFAED9D0, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
         };
     }
-    }
+}
