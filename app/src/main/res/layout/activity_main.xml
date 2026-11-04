@@ -8,14 +8,11 @@
         </LinearLayout>
         <TextView android:id="@+id/btn_settings" android:layout_width="wrap_content" android:layout_height="44dp" android:background="#F7FFFFFF" android:gravity="center" android:paddingStart="16dp" android:paddingEnd="16dp" android:text="⚙ 设置" android:textColor="#172B4D" android:textSize="15sp" android:textStyle="bold" />
     </LinearLayout>
-    
-    <!-- 注意这里：换上了刚刚新建的圆角背景 @drawable/bg_search_box -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginStart="18dp" android:layout_marginEnd="18dp" android:layout_marginBottom="12dp" android:background="@drawable/bg_search_box" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔍" android:textSize="18sp" />
         <EditText android:id="@+id/search_box" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:hint="搜索应用或自建机场..." android:inputType="text" android:maxLines="1" android:imeOptions="actionSearch" android:paddingStart="8dp" android:textColor="#172B4D" android:textSize="16sp" />
         <TextView android:id="@+id/btn_clear_search" android:layout_width="wrap_content" android:layout_height="wrap_content" android:padding="8dp" android:text="✕" android:textColor="#7889A8" android:textSize="16sp" android:visibility="gone" />
     </LinearLayout>
-    
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginStart="18dp" android:layout_marginEnd="18dp" android:layout_marginBottom="8dp">
         <CheckBox android:id="@+id/show_all_checkbox" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="显示全部应用" android:textSize="16sp" android:textStyle="bold" android:textColor="#172B4D" android:buttonTint="#2878E8" />
         <TextView android:id="@+id/tv_help" android:layout_width="26dp" android:layout_height="26dp" android:layout_marginStart="10dp" android:gravity="center" android:text="?" android:textSize="15sp" android:textStyle="bold" android:textColor="#FFFFFF" android:background="#2878E8" />
