@@ -97,9 +97,9 @@ public class MainActivity extends Activity {
         applyTheme(prefs.getInt(KEY_THEME, 0), false);
         showAllCheckbox.setOnCheckedChangeListener(null); showAllCheckbox.setChecked(isShowAll);
         showAllCheckbox.setOnCheckedChangeListener((v, c) -> { isShowAll = c; prefs.edit().putBoolean(KEY_SHOW_ALL, c).apply(); scanApps(); });
-        tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("使用说明").setMessage("【设置中心】点击右上角「设置」，可以添加自建机场、切换界面主题。\n\n【自动刷新】安装、卸载应用以及修改标签、增删机场后，列表会自动更新。\n\n【点击应用】弹出菜单，可打开、打标签、卸载等。\n\n【长按收藏】长按任意条目可直接置顶收藏。").setPositiveButton("我知道了", null).show());
+        tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("使用说明").setMessage("【设置中心】点击右上角「设置」，可以添加自有机场、切换界面主题。\n\n【自动刷新】安装、卸载应用以及修改标签、增删机场后，列表会自动更新。\n\n【点击应用】弹出菜单，可打开、打标签、卸载等。\n\n【长按收藏】长按任意条目可直接置顶收藏。").setPositiveButton("我知道了", null).show());
         btnClearSearch.setOnClickListener(v -> searchBox.setText(""));
-        btnSettings.setOnClickListener(v -> { String[] ops = {"➕ 添加自建机场", "🎨 切换界面主题"}; new AlertDialog.Builder(this).setTitle("设置").setItems(ops, (d, w) -> { if (w == 0) showAddAirportDialog(); else showThemeDialog(); }).show(); });
+        btnSettings.setOnClickListener(v -> { String[] ops = {"➕ 自有机场", "🎨 切换界面主题"}; new AlertDialog.Builder(this).setTitle("设置").setItems(ops, (d, w) -> { if (w == 0) showAddAirportDialog(); else showThemeDialog(); }).show(); });
         listView.setOnItemClickListener((p, v, pos, id) -> { if (pos >= 0 && pos < apps.size()) showAppOptionsDialog(apps.get(pos)); });
         listView.setOnItemLongClickListener((p, v, pos, id) -> { if (pos >= 0 && pos < apps.size()) toggleFavorite(apps.get(pos).packageName); return true; });
         searchBox.addTextChangedListener(new TextWatcher() {
@@ -119,7 +119,7 @@ public class MainActivity extends Activity {
     private void loadMarks() { appMarks.clear(); try { JSONObject jsonObject = new JSONObject(prefs.getString(KEY_MARKS, "{}")); Iterator<String> keys = jsonObject.keys(); while (keys.hasNext()) { String key = keys.next(); appMarks.put(key, jsonObject.getString(key)); } } catch (Exception ignored) {} }
     private void saveSets() { prefs.edit().putStringSet(KEY_FAV, new HashSet<>(favoritePackages)).putStringSet(KEY_CUSTOM, new HashSet<>(customVpnPackages)).putStringSet(KEY_VIRTUAL, new HashSet<>(virtualAirports)).putString(KEY_MARKS, new JSONObject(appMarks).toString()).apply(); }
     
-    private void showAddAirportDialog() { final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setHint("例如：一元机场"); new AlertDialog.Builder(this).setTitle("添加自建机场").setView(input).setPositiveButton("添加", (dialog, which) -> { String name = input.getText().toString().trim(); if (!name.isEmpty()) { if (virtualAirports.contains(name)) Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show(); else { virtualAirports.add(name); saveSets(); scanApps(); } } }).setNegativeButton("取消", null).show(); }
+    private void showAddAirportDialog() { final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setHint("例如：一元机场"); new AlertDialog.Builder(this).setTitle("添加自有机场").setView(input).setPositiveButton("添加", (dialog, which) -> { String name = input.getText().toString().trim(); if (!name.isEmpty()) { if (virtualAirports.contains(name)) Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show(); else { virtualAirports.add(name); saveSets(); scanApps(); } } }).setNegativeButton("取消", null).show(); }
     private void showRenameAirportDialog(AppInfo app) { final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setText(app.label); new AlertDialog.Builder(this).setTitle("修改名称").setView(input).setPositiveButton("保存", (dialog, which) -> { String newName = input.getText().toString().trim(); if (!newName.isEmpty() && !newName.equals(app.label)) { if (virtualAirports.contains(newName)) { Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show(); return; } String oldKey = app.packageName, newKey = virtualPackageKey(newName); if (favoritePackages.remove(oldKey)) favoritePackages.add(newKey); virtualAirports.remove(app.label); virtualAirports.add(newName); saveSets(); scanApps(); } }).setNegativeButton("取消", null).show(); }
     private void deleteAirport(AppInfo app) { new AlertDialog.Builder(this).setTitle("删除").setMessage("确定删除？").setPositiveButton("删除", (dialog, which) -> { virtualAirports.remove(app.label); favoritePackages.remove(app.packageName); saveSets(); scanApps(); }).setNegativeButton("取消", null).show(); }
     
@@ -179,7 +179,7 @@ public class MainActivity extends Activity {
                     Drawable i = iconCache.get(p); if (i == null) { try { i = pm.getApplicationIcon(ai); } catch (Exception e) { i = pm.getDefaultActivityIcon(); } iconCache.put(p, i); }
                     fd.add(new AppInfo(lb, p, i, l, ia, ic, ifv, mk, formatSize(ai), false));
                 }
-                for (String an : vs) fd.add(new AppInfo(an, virtualPackageKey(an), pm.getDefaultActivityIcon(), null, false, true, fs.contains(virtualPackageKey(an)), "机场", "自建", true));
+                for (String an : vs) fd.add(new AppInfo(an, virtualPackageKey(an), pm.getDefaultActivityIcon(), null, false, true, fs.contains(virtualPackageKey(an)), "自建", "自有机场", true));
             } catch (Exception e) { err = e.getClass().getSimpleName(); }
             final String error = err; final List<AppInfo> result = fd;
             runOnUiThread(() -> {
@@ -235,4 +235,4 @@ public class MainActivity extends Activity {
             new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFAFFFFFF, 0xFFAED9D0, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
         };
     }
-}
+    }
