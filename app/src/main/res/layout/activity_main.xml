@@ -10,7 +10,8 @@
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginStart="18dp" android:layout_marginEnd="18dp" android:layout_marginBottom="12dp" android:background="@drawable/bg_search_box" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔍" android:textSize="18sp" />
-        <EditText android:id="@+id/search_box" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:hint="搜索应用或自建机场..." android:inputType="text" android:maxLines="1" android:imeOptions="actionSearch" android:paddingStart="8dp" android:textColor="#172B4D" android:textSize="16sp" />
+        <!-- 这里改成了“自有机场” -->
+        <EditText android:id="@+id/search_box" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:hint="搜索应用或自有机场..." android:inputType="text" android:maxLines="1" android:imeOptions="actionSearch" android:paddingStart="8dp" android:textColor="#172B4D" android:textSize="16sp" />
         <TextView android:id="@+id/btn_clear_search" android:layout_width="wrap_content" android:layout_height="wrap_content" android:padding="8dp" android:text="✕" android:textColor="#7889A8" android:textSize="16sp" android:visibility="gone" />
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginStart="18dp" android:layout_marginEnd="18dp" android:layout_marginBottom="8dp">
