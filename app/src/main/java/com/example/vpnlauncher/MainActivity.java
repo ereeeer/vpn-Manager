@@ -228,12 +228,12 @@ public class MainActivity extends Activity {
         final int backgroundStart, backgroundEnd, card, cardStroke, text, secondary, accent, searchBackground, indexBackground; final boolean dark;
         ThemeColors(int s, int e, int c, int st, int t, int sc, int a, int se, int i, boolean d) { backgroundStart = s; backgroundEnd = e; card = c; cardStroke = st; text = t; secondary = sc; accent = a; searchBackground = se; indexBackground = i; dark = d; }
         static final ThemeColors[] THEMES = {
-            new ThemeColors(0xFFEAF3FF, 0xFFD8E8FF, 0xF7FFFFFF, 0xFFDCE8FA, 0xFF172B4D, 0xFF7889A8, 0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false),
-            new ThemeColors(0xFF10182B, 0xFF1D2A45, 0xFF24304A, 0xFF35425E, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF28344E, 0xFF35425E, true),
-            new ThemeColors(0xFFEAF3E7, 0xFFDCEBDD, 0xF9FAFFF7, 0xFFD5E5D1, 0xFF304B37, 0xFF718875, 0xFF548B5B, 0xF9FFFFFF, 0xFFE5F0E1, false),
-            new ThemeColors(0xFFF3ECFF, 0xFFE7DCFA, 0xFAFFFFFF, 0xFFE2D8F2, 0xFF3F315B, 0xFF82769B, 0xFF8062C9, 0xFAFFFFFF, 0xFFEDE5FF, false),
-            new ThemeColors(0xFFFFF5E6, 0xFFFFE7C8, 0xFAFFFCF6, 0xFFF0DFC8, 0xFF57432E, 0xFF927D65, 0xFFC17A32, 0xFAFFFFFF, 0xFFFFEED8, false),
-            new ThemeColors(0xFFE8F7F3, 0xFFD4EEE8, 0xFAFFFFFF, 0xFFD6EAE4, 0xFF285248, 0xFF718F87, 0xFF278F82, 0xFAFFFFFF, 0xFFDFF2EC, false)
+            new ThemeColors(0xFFE6F0FA, 0xFFD0E0F5, 0xF7FFFFFF, 0xFFC2D6F0, 0xFF172B4D, 0xFF6B7E99, 0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false),
+            new ThemeColors(0xFF0F1724, 0xFF1A2536, 0xFF202C41, 0xFF31415B, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF253349, 0xFF31415B, true),
+            new ThemeColors(0xFFE4F3E6, 0xFFCFE8D2, 0xF9FAFFF7, 0xFFBFDEC2, 0xFF2D4532, 0xFF687E6B, 0xFF548B5B, 0xF9FFFFFF, 0xFFDCECD8, false),
+            new ThemeColors(0xFFF0E6FF, 0xFFE0D0F5, 0xFAFFFFFF, 0xFFD3C2EA, 0xFF3A2D52, 0xFF7A6F8F, 0xFF8062C9, 0xFAFFFFFF, 0xFFEADDFF, false),
+            new ThemeColors(0xFFFFF0DB, 0xFFFFE0B2, 0xFAFFFCF6, 0xFFF0D6B8, 0xFF513D29, 0xFF89745C, 0xFFC17A32, 0xFAFFFFFF, 0xFFFFE8CC, false),
+            new ThemeColors(0xFFE0F5F1, 0xFFC5EAE3, 0xFAFFFFFF, 0xFFB7DDD5, 0xFF234B41, 0xFF688D85, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
         };
     }
 }
