@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
     private final List<AppInfo> allApps = new ArrayList<>(), apps = new ArrayList<>();
     private SharedPreferences prefs;
     private Set<String> favoritePackages = new HashSet<>(), customVpnPackages = new HashSet<>(), virtualAirports = new HashSet<>();
-    private Set<String> uninstalledHistory = new HashSet<>(); // 新增：记录卸载过的包名
+    private Set<String> uninstalledHistory = new HashSet<>();
     private Map<String, String> appMarks = new HashMap<>();
 
     private final BroadcastReceiver uninstallReceiver = new BroadcastReceiver() {
@@ -79,8 +79,7 @@ public class MainActivity extends Activity {
                 String pkg = intent.getData() != null ? intent.getData().getSchemeSpecificPart() : null;
                 if (pkg != null) {
                     favoritePackages.remove(pkg); customVpnPackages.remove(pkg); appMarks.remove(pkg);
-                    uninstalledHistory.add(pkg); // 记录到历史里
-                    saveSets();
+                    uninstalledHistory.add(pkg); saveSets();
                 }
                 scanApps();
             } else if (Intent.ACTION_PACKAGE_ADDED.equals(action)) scanApps();
@@ -94,7 +93,7 @@ public class MainActivity extends Activity {
         favoritePackages = new HashSet<>(prefs.getStringSet(KEY_FAV, Collections.emptySet()));
         customVpnPackages = new HashSet<>(prefs.getStringSet(KEY_CUSTOM, Collections.emptySet()));
         virtualAirports = new HashSet<>(prefs.getStringSet(KEY_VIRTUAL, Collections.emptySet()));
-        uninstalledHistory = new HashSet<>(prefs.getStringSet(KEY_UNINSTALLED, Collections.emptySet())); // 初始化历史记录
+        uninstalledHistory = new HashSet<>(prefs.getStringSet(KEY_UNINSTALLED, Collections.emptySet()));
         migrateVirtualFavoriteKeys(); loadMarks(); isShowAll = prefs.getBoolean(KEY_SHOW_ALL, false);
         rootLayout = findViewById(R.id.root_layout); titleText = findViewById(R.id.title_text); subtitleText = findViewById(R.id.subtitle_text);
         emptyView = findViewById(R.id.empty_view); listView = findViewById(R.id.list); btnSettings = findViewById(R.id.btn_settings);
@@ -103,7 +102,7 @@ public class MainActivity extends Activity {
         applyTheme(prefs.getInt(KEY_THEME, 0), false);
         showAllCheckbox.setOnCheckedChangeListener(null); showAllCheckbox.setChecked(isShowAll);
         showAllCheckbox.setOnCheckedChangeListener((v, c) -> { isShowAll = c; prefs.edit().putBoolean(KEY_SHOW_ALL, c).apply(); scanApps(); });
-        tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("使用说明").setMessage("【设置中心】点击右上角「设置」，可以添加自有机场、切换界面主题。\n\n【自动刷新】安装、卸载应用以及修改标签后，列表会自动更新。\n\n【卸载追踪】如果你卸载了某个应用，以后重新安装时，它会带上「曾卸载」的标签。\n\n【点击应用】弹出菜单，可打开、打标签、卸载等。\n\n【长按收藏】长按任意条目可直接置顶收藏。").setPositiveButton("我知道了", null).show());
+        tvHelp.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("使用说明").setMessage("【设置中心】点击右上角「设置」，可以添加自有机场、切换界面主题。\n\n【卸载追踪】如果你卸载了某个应用，以后重新安装时，它会带上「曾卸载」的标签。\n\n【收费标签】点击标签选「最低/最高收费」时，可自己输入具体金额。").setPositiveButton("我知道了", null).show());
         btnClearSearch.setOnClickListener(v -> searchBox.setText(""));
         btnSettings.setOnClickListener(v -> { String[] ops = {"➕ 自有机场", "🎨 切换界面主题"}; new AlertDialog.Builder(this).setTitle("设置").setItems(ops, (d, w) -> { if (w == 0) showAddAirportDialog(); else showThemeDialog(); }).show(); });
         listView.setOnItemClickListener((p, v, pos, id) -> { if (pos >= 0 && pos < apps.size()) showAppOptionsDialog(apps.get(pos)); });
@@ -136,20 +135,44 @@ public class MainActivity extends Activity {
             options.add("🚀 打开应用"); actions.add(() -> { if (app.launchIntent != null) { try { startActivity(app.launchIntent); } catch (Exception e) {} } });
             options.add("🏷️ 标签"); actions.add(() -> showMarkDialog(app)); options.add("📋 复制包名"); actions.add(() -> copyPackage(app.packageName)); options.add("⚙️ 应用信息"); actions.add(() -> jumpToSettings(app.packageName));
             if (app.isCustom) { options.add("❌ 取消收编"); actions.add(() -> unmarkVpn(app.packageName)); }
-            // 新增：允许清除历史标记
             if (app.isReinstalled) { options.add("✨ 清除曾卸载标记"); actions.add(() -> { uninstalledHistory.remove(app.packageName); saveSets(); scanApps(); }); }
             options.add("🗑️ 卸载"); actions.add(() -> confirmUninstall(app));
         }
         new AlertDialog.Builder(this).setTitle(app.label).setItems(options.toArray(new String[0]), (dialog, which) -> actions.get(which).run()).show();
     }
     
-    private void showMarkDialog(AppInfo app) { String[] marks = {"最低收费", "最高收费", "稳定", "下载快", "免费好用", "清除标签"}; new AlertDialog.Builder(this).setTitle("标签").setItems(marks, (dialog, which) -> { if (which == 5) { appMarks.remove(app.packageName); saveSets(); scanApps(); } else applyMark(app.packageName, marks[which]); }).show(); }
+    // 【更新】：收费标签支持输入自定义金额，并增加了支付方式
+    private void showMarkDialog(AppInfo app) { 
+        String[] marks = {"最低收费", "最高收费", "支持支/微", "稳定", "下载快", "免费好用", "清除标签"}; 
+        new AlertDialog.Builder(this).setTitle("标签").setItems(marks, (dialog, which) -> { 
+            if (which == 6) { appMarks.remove(app.packageName); saveSets(); scanApps(); } 
+            else if (which == 0 || which == 1) { 
+                final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setHint("请输入具体金额,如: 15元/月");
+                new AlertDialog.Builder(this).setTitle(marks[which]).setView(input).setPositiveButton("确定", (d, w) -> {
+                    String amt = input.getText().toString().trim(); 
+                    String res = marks[which] + (amt.isEmpty() ? "" : ": " + amt);
+                    applyMark(app.packageName, res);
+                }).setNegativeButton("取消", null).show();
+            } 
+            else applyMark(app.packageName, marks[which]); 
+        }).show(); 
+    }
+
     private void applyMark(String p, String m) { appMarks.put(p, m); customVpnPackages.add(p); saveSets(); scanApps(); }
     private void unmarkVpn(String p) { customVpnPackages.remove(p); appMarks.remove(p); saveSets(); scanApps(); }
     
     private void toggleFavorite(String p) { if (favoritePackages.contains(p)) favoritePackages.remove(p); else favoritePackages.add(p); saveSets(); for (AppInfo a : allApps) a.isFavorite = favoritePackages.contains(a.packageName); int f = listView.getFirstVisiblePosition(); View v = listView.getChildAt(0); int t = v == null ? 0 : v.getTop(); sortAndAssignIndex(); filterApps(searchBox.getText().toString()); listView.setSelectionFromTop(f, t); }
     private void copyPackage(String p) { ClipboardManager c = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE); if (c != null) { c.setPrimaryClip(ClipData.newPlainText("pkg", p)); Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show(); } }
-    private void confirmUninstall(AppInfo a) { new AlertDialog.Builder(this).setTitle("卸载").setMessage("确定卸载「" + a.label + "」？").setNegativeButton("取消", null).setPositiveButton("卸载", (d, w) -> { try { startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.packageName))); } catch (Exception e) { jumpToSettings(a.packageName); } }).show(); }
+    
+    // 【更新】：取消弹窗，直接卸载
+    private void confirmUninstall(AppInfo a) { 
+        try { 
+            startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.packageName))); 
+        } catch (Exception e) { 
+            jumpToSettings(a.packageName); 
+        } 
+    }
+
     private void showThemeDialog() { int s = prefs.getInt(KEY_THEME, 0); if (s < 0 || s >= THEME_NAMES.length) s = 0; new AlertDialog.Builder(this).setTitle("主题").setSingleChoiceItems(THEME_NAMES, s, (d, w) -> { applyTheme(w, true); d.dismiss(); }).setNegativeButton("取消", null).show(); }
     
     private void applyTheme(int w, boolean p) {
@@ -183,7 +206,7 @@ public class MainActivity extends Activity {
                     ApplicationInfo ai; try { ai = pm.getApplicationInfo(p, 0); } catch (Exception e) { continue; }
                     if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue; Intent l = pm.getLaunchIntentForPackage(p); if (l == null) continue;
                     String lb = pm.getApplicationLabel(ai).toString(); String mk = ms.get(p); boolean ia = vp.contains(p) || matchesKeyword(lb, p), ic = cs.contains(p), ifv = fs.contains(p);
-                    boolean isRe = uh.contains(p); // 判断是否重装过
+                    boolean isRe = uh.contains(p); 
                     if (!sa && !ia && !ic && !ifv && mk == null) continue;
                     Drawable i = iconCache.get(p); if (i == null) { try { i = pm.getApplicationIcon(ai); } catch (Exception e) { i = pm.getDefaultActivityIcon(); } iconCache.put(p, i); }
                     fd.add(new AppInfo(lb, p, i, l, ia, ic, ifv, mk, formatSize(ai), false, isRe));
@@ -223,7 +246,6 @@ public class MainActivity extends Activity {
             h.name.setText(a.label); h.name.setTextColor(t.text); h.size.setText(a.sizeStr); h.size.setTextColor(t.secondary); h.fav.setVisibility(a.isFavorite ? View.VISIBLE : View.GONE); h.arrow.setTextColor(t.secondary);
             
             if (a.mark != null && !a.mark.isEmpty()) { h.mark.setText(a.mark); h.mark.setVisibility(View.VISIBLE); } else h.mark.setVisibility(View.GONE);
-            // 显示曾卸载标签
             h.reinstallMark.setVisibility(a.isReinstalled ? View.VISIBLE : View.GONE);
 
             h.root.setBackground(roundDrawable(t.card, t.cardStroke, dp(20)));
@@ -248,4 +270,4 @@ public class MainActivity extends Activity {
             new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFAFFFFFF, 0xFFAED9D0, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
         };
     }
-        }
+}
