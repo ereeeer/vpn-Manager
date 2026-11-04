@@ -151,7 +151,7 @@ public class MainActivity extends Activity {
         titleText.setTextColor(currentTheme.text); if (subtitleText != null) subtitleText.setTextColor(currentTheme.secondary);
         showAllCheckbox.setTextColor(currentTheme.text); tvHelp.setTextColor(Color.WHITE); tvHelp.setBackground(circleDrawable(currentTheme.accent)); emptyView.setTextColor(currentTheme.secondary);
         
-        // 【核心修复】：彻底删掉了 searchBox.setBackground(...)，不再给输入框画双层边框
+        // 删除了 searchBox.setBackground，彻底交给 XML 的圆角背景
         searchBox.setTextColor(currentTheme.text); searchBox.setHintTextColor(currentTheme.secondary);
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) showAllCheckbox.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{currentTheme.accent, currentTheme.secondary}));
@@ -231,12 +231,18 @@ public class MainActivity extends Activity {
         final int backgroundStart, backgroundEnd, card, cardStroke, text, secondary, accent, searchBackground, indexBackground; final boolean dark;
         ThemeColors(int s, int e, int c, int st, int t, int sc, int a, int se, int i, boolean d) { backgroundStart = s; backgroundEnd = e; card = c; cardStroke = st; text = t; secondary = sc; accent = a; searchBackground = se; indexBackground = i; dark = d; }
         static final ThemeColors[] THEMES = {
-            new ThemeColors(0xFFE6F0FA, 0xFFD0E0F5, 0xF7FFFFFF, 0xFFC2D6F0, 0xFF172B4D, 0xFF6B7E99, 0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false),
-            new ThemeColors(0xFF0F1724, 0xFF1A2536, 0xFF202C41, 0xFF31415B, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF253349, 0xFF31415B, true),
-            new ThemeColors(0xFFE4F3E6, 0xFFCFE8D2, 0xF9FAFFF7, 0xFFBFDEC2, 0xFF2D4532, 0xFF687E6B, 0xFF548B5B, 0xF9FFFFFF, 0xFFDCECD8, false),
-            new ThemeColors(0xFFF0E6FF, 0xFFE0D0F5, 0xFAFFFFFF, 0xFFD3C2EA, 0xFF3A2D52, 0xFF7A6F8F, 0xFF8062C9, 0xFAFFFFFF, 0xFFEADDFF, false),
-            new ThemeColors(0xFFFFF0DB, 0xFFFFE0B2, 0xFAFFFCF6, 0xFFF0D6B8, 0xFF513D29, 0xFF89745C, 0xFFC17A32, 0xFAFFFFFF, 0xFFFFE8CC, false),
-            new ThemeColors(0xFFE0F5F1, 0xFFC5EAE3, 0xFAFFFFFF, 0xFFB7DDD5, 0xFF234B41, 0xFF688D85, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
+            // 更加明显的渐变蓝
+            new ThemeColors(0xFFE0ECFA, 0xFFC6DDF5, 0xF7FFFFFF, 0xFFB3CBE8, 0xFF172B4D, 0xFF5C6D87, 0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false),
+            // 更加深邃的夜间
+            new ThemeColors(0xFF0B1220, 0xFF162035, 0xFF1E2A42, 0xFF2D3C56, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF24314B, 0xFF2D3C56, true),
+            // 更加明显的护眼绿
+            new ThemeColors(0xFFE1F2E4, 0xFFCBE7CE, 0xF9FAFFF7, 0xFFB7DBBB, 0xFF2D4532, 0xFF5D7562, 0xFF548B5B, 0xF9FFFFFF, 0xFFDCECD8, false),
+            // 更加明显的薰衣草紫
+            new ThemeColors(0xFFEDE0FF, 0xFFDAC9F5, 0xFAFFFFFF, 0xFFCBB6EA, 0xFF3A2D52, 0xFF736789, 0xFF8062C9, 0xFAFFFFFF, 0xFFEADDFF, false),
+            // 更加明显的暖橙米色
+            new ThemeColors(0xFFFFEEDD, 0xFFFFD9B0, 0xFAFFFCF6, 0xFFEECFAE, 0xFF513D29, 0xFF806B53, 0xFFC17A32, 0xFAFFFFFF, 0xFFFFE8CC, false),
+            // 更加明显的薄荷青
+            new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFAFFFFFF, 0xFFAED9D0, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
         };
     }
 }
