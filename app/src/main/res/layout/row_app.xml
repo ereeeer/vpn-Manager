@@ -2,15 +2,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/row_root" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:background="#F7FFFFFF" android:elevation="3dp" android:foreground="?android:attr/selectableItemBackground" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="7dp" android:layout_marginBottom="7dp" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="14dp" android:paddingBottom="14dp">
     
-    <!-- 序号稍微改小了一点，改成 32dp -->
-    <TextView android:id="@+id/tv_index" android:layout_width="32dp" android:layout_height="32dp" android:gravity="center" android:text="1" android:textSize="14sp" android:textStyle="bold" android:textColor="#7889A8" android:layout_marginEnd="12dp" />
+    <TextView android:id="@+id/tv_index" android:layout_width="30dp" android:layout_height="30dp" android:gravity="center" android:text="1" android:textSize="13sp" android:textStyle="bold" android:textColor="#7889A8" android:layout_marginEnd="10dp" />
     
-    <!-- App 图标从 50dp 缩小到 42dp -->
-    <ImageView android:id="@+id/app_icon" android:layout_width="42dp" android:layout_height="42dp" android:scaleType="fitCenter" android:contentDescription="图标" />
+    <!-- 图标改为了 38dp，绝对小巧精致 -->
+    <ImageView android:id="@+id/app_icon" android:layout_width="38dp" android:layout_height="38dp" android:scaleType="fitCenter" android:contentDescription="图标" />
     
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-            <TextView android:id="@+id/tv_favorite" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⭐" android:textSize="14sp" android:layout_marginEnd="6dp" android:visibility="gone" />
+            <TextView android:id="@+id/tv_favorite" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⭐" android:textSize="12sp" android:layout_marginEnd="4dp" android:visibility="gone" />
             <TextView android:id="@+id/app_name" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:textSize="16sp" android:textStyle="bold" android:textColor="#172B4D" android:singleLine="true" android:ellipsize="end" />
         </LinearLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="4dp" android:gravity="center_vertical">
