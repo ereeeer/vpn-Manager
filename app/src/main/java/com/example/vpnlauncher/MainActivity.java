@@ -150,7 +150,10 @@ public class MainActivity extends Activity {
         rootLayout.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{currentTheme.backgroundStart, currentTheme.backgroundEnd}));
         titleText.setTextColor(currentTheme.text); if (subtitleText != null) subtitleText.setTextColor(currentTheme.secondary);
         showAllCheckbox.setTextColor(currentTheme.text); tvHelp.setTextColor(Color.WHITE); tvHelp.setBackground(circleDrawable(currentTheme.accent)); emptyView.setTextColor(currentTheme.secondary);
-        searchBox.setTextColor(currentTheme.text); searchBox.setHintTextColor(currentTheme.secondary); searchBox.setBackground(roundDrawable(currentTheme.searchBackground, currentTheme.cardStroke, dp(18)));
+        
+        // 【核心修复】：彻底删掉了 searchBox.setBackground(...)，不再给输入框画双层边框
+        searchBox.setTextColor(currentTheme.text); searchBox.setHintTextColor(currentTheme.secondary);
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) showAllCheckbox.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{currentTheme.accent, currentTheme.secondary}));
         btnSettings.setTextColor(currentTheme.text); btnSettings.setBackground(roundDrawable(currentTheme.card, currentTheme.cardStroke, dp(16))); btnClearSearch.setTextColor(currentTheme.secondary);
         if (p) prefs.edit().putInt(KEY_THEME, w).apply(); if (adapter != null) adapter.notifyDataSetChanged();
