@@ -52,6 +52,8 @@ import java.util.Set;
 public class MainActivity extends Activity {
     private static final String PREFS = "VpnManagerPrefs", KEY_FAV = "favorites", KEY_CUSTOM = "custom_vpns", KEY_MARKS = "app_marks", KEY_VIRTUAL = "virtual_airports", KEY_THEME = "theme_index", KEY_SHOW_ALL = "show_all", KEY_UNINSTALLED = "uninstalled_history", VPN_SERVICE_ACTION = "android.net.VpnService";
     private static final String[] KEYWORDS = {"vpn", "代理", "proxy", "加速", "梯子", "翻墙", "clash", "v2ray", "xray", "ssr", "shadowsocks", "surfboard", "trojan", "wireguard", "openvpn", "hysteria", "sing-box", "singbox", "nekobox", "sagernet", "outline", "hiddify", "roxi", "tuic"};
+    // 黑名单过滤：如果有杀毒、清理的软件混进来，直接拦截
+    private static final String[] EXCLUDE_KEYWORDS = {"清理", "杀毒", "病毒", "安全", "卫士", "内存", "优化", "防骚扰", "拦截"};
     private static final String[] THEME_NAMES = {"渐变蓝", "深色夜间", "护眼绿", "薰衣草紫", "暖橙米色", "薄荷青"};
 
     private LinearLayout rootLayout;
@@ -161,6 +163,7 @@ public class MainActivity extends Activity {
     private void toggleFavorite(String p) { if (favoritePackages.contains(p)) favoritePackages.remove(p); else favoritePackages.add(p); saveSets(); for (AppInfo a : allApps) a.isFavorite = favoritePackages.contains(a.packageName); int f = listView.getFirstVisiblePosition(); View v = listView.getChildAt(0); int t = v == null ? 0 : v.getTop(); sortAndAssignIndex(); filterApps(searchBox.getText().toString()); listView.setSelectionFromTop(f, t); }
     private void copyPackage(String p) { ClipboardManager c = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE); if (c != null) { c.setPrimaryClip(ClipData.newPlainText("pkg", p)); Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show(); } }
     
+    // 直接卸载，去掉了二次确认
     private void confirmUninstall(AppInfo a) { 
         try { startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.packageName))); } catch (Exception e) { jumpToSettings(a.packageName); } 
     }
@@ -197,7 +200,15 @@ public class MainActivity extends Activity {
                     if (ri.activityInfo == null) continue; String p = ri.activityInfo.packageName; if (!sn.add(p) || self.equals(p)) continue;
                     ApplicationInfo ai; try { ai = pm.getApplicationInfo(p, 0); } catch (Exception e) { continue; }
                     if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue; Intent l = pm.getLaunchIntentForPackage(p); if (l == null) continue;
-                    String lb = pm.getApplicationLabel(ai).toString(); String mk = ms.get(p); boolean ia = vp.contains(p) || matchesKeyword(lb, p), ic = cs.contains(p), ifv = fs.contains(p);
+                    
+                    String lb = pm.getApplicationLabel(ai).toString(); 
+                    boolean isExcluded = false;
+                    for (String ex : EXCLUDE_KEYWORDS) {
+                        if (lb.contains(ex)) { isExcluded = true; break; }
+                    }
+                    if (isExcluded) continue;
+
+                    String mk = ms.get(p); boolean ia = vp.contains(p) || matchesKeyword(lb, p), ic = cs.contains(p), ifv = fs.contains(p);
                     boolean isRe = uh.contains(p); 
                     if (!sa && !ia && !ic && !ifv && mk == null) continue;
                     Drawable i = iconCache.get(p); if (i == null) { try { i = pm.getApplicationIcon(ai); } catch (Exception e) { i = pm.getDefaultActivityIcon(); } iconCache.put(p, i); }
@@ -253,14 +264,19 @@ public class MainActivity extends Activity {
     private static class ThemeColors {
         final int backgroundStart, backgroundEnd, card, cardStroke, text, secondary, accent, searchBackground, indexBackground; final boolean dark;
         ThemeColors(int s, int e, int c, int st, int t, int sc, int a, int se, int i, boolean d) { backgroundStart = s; backgroundEnd = e; card = c; cardStroke = st; text = t; secondary = sc; accent = a; searchBackground = se; indexBackground = i; dark = d; }
-        // 完美提取了设计图里最靓丽的颜色
         static final ThemeColors[] THEMES = {
-            new ThemeColors(0xFFE6F0FF, 0xFFD6E8FF, 0xFFFFFFFF, 0xFFDCE8FA, 0xFF172B4D, 0xFF7889A8, 0xFF2878E8, 0xFFFFFFFF, 0xFFE5EEFF, false),
-            new ThemeColors(0xFF1B1F3B, 0xFF0F1326, 0xFF20253C, 0xFF2D3450, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF28304E, 0xFF2D3450, true),
-            new ThemeColors(0xFFE8F8F0, 0xFFD4F5E1, 0xFFFFFFFF, 0xFFD5E5D1, 0xFF304B37, 0xFF718875, 0xFF548B5B, 0xFFFFFFFF, 0xFFE5F0E1, false),
-            new ThemeColors(0xFFF3E8FF, 0xFFE6D8FF, 0xFFFFFFFF, 0xFFE2D8F2, 0xFF3F315B, 0xFF82769B, 0xFF8062C9, 0xFFFFFFFF, 0xFFEDE5FF, false),
-            new ThemeColors(0xFFFFF6E5, 0xFFFFE0B2, 0xFFFFFFFF, 0xFFF0DFC8, 0xFF57432E, 0xFF927D65, 0xFFC17A32, 0xFFFFFFFF, 0xFFFFEED8, false),
-            new ThemeColors(0xFFE8F7EE, 0xFFD0F0D0, 0xFFFFFFFF, 0xFFD6EAE4, 0xFF285248, 0xFF718F87, 0xFF278F82, 0xFFFFFFFF, 0xFFDFF2EC, false)
+            // 1. 渐变蓝 (高对比度)
+            new ThemeColors(0xFFD4E6FF, 0xFFB8D4FF, 0xFFFFFFFF, 0xFFB3CBE8, 0xFF172B4D, 0xFF5C6D87, 0xFF2878E8, 0xFFFFFFFF, 0xFFE5EEFF, false),
+            // 2. 深色夜间 (高对比度)
+            new ThemeColors(0xFF141A2E, 0xFF0A0E17, 0xFF1E263D, 0xFF2D3C56, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF24314B, 0xFF2D3C56, true),
+            // 3. 护眼绿
+            new ThemeColors(0xFFE1F2E4, 0xFFCBE7CE, 0xFFFFFFFF, 0xFFB7DBBB, 0xFF2D4532, 0xFF5D7562, 0xFF548B5B, 0xFFFFFFFF, 0xFFDCECD8, false),
+            // 4. 薰衣草紫
+            new ThemeColors(0xFFE6D8FF, 0xFFD1BDFF, 0xFFFFFFFF, 0xFFCBB6EA, 0xFF3A2D52, 0xFF736789, 0xFF8062C9, 0xFFFFFFFF, 0xFFEADDFF, false),
+            // 5. 暖橙米色
+            new ThemeColors(0xFFFFEEDD, 0xFFFFD9B0, 0xFFFFFFFF, 0xFFEECFAE, 0xFF513D29, 0xFF806B53, 0xFFC17A32, 0xFFFFFFFF, 0xFFFFE8CC, false),
+            // 6. 薄荷青
+            new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFFFFFFFF, 0xFFAED9D0, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFFFFFFFF, 0xFFD4ECE6, false)
         };
     }
 }
