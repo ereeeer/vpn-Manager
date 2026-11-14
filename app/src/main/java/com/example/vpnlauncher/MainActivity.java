@@ -1,5 +1,4 @@
 package com.example.vpnlauncher;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
