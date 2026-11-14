@@ -1,4 +1,68 @@
-android:layout_weight="1"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/row_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="52dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="#F7FFFFFF"
+    android:elevation="3dp"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="3dp"
+    android:layout_marginBottom="3dp"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="7dp"
+    android:paddingBottom="7dp">
+
+    <TextView
+        android:id="@+id/tv_index"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:gravity="center"
+        android:text="1"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="#7889A8"
+        android:layout_marginEnd="10dp" />
+
+    <ImageView
+        android:id="@+id/app_icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="应用图标" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_favorite"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⭐"
+                android:textSize="11sp"
+                android:layout_marginEnd="4dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/app_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="#172B4D"
@@ -82,4 +146,5 @@ android:layout_weight="1"
         android:textSize="20sp"
         android:textColor="#C0C8D8"
         android:layout_marginStart="2dp" />
+
 </LinearLayout>
