@@ -734,7 +734,6 @@ public class MainActivity extends Activity {
                         }
                     }
                 } catch (Exception e) {
-                    e = e;
                     err = e.getClass().getSimpleName();
                     final String error = err;
                     runOnUiThread(new Runnable() { // from class: com.example.vpnlauncher.MainActivity$$ExternalSyntheticLambda24
@@ -839,8 +838,7 @@ public class MainActivity extends Activity {
                                                         i2 = 0;
                                                     }
                                                 } catch (Exception e3) {
-                                                    e = e3;
-                                                    err = e.getClass().getSimpleName();
+                                                    err = e3.getClass().getSimpleName();
                                                     final String error2 = err;
                                                     runOnUiThread(new Runnable() { // from class: com.example.vpnlauncher.MainActivity$$ExternalSyntheticLambda24
                                                         @Override // java.lang.Runnable
@@ -851,8 +849,7 @@ public class MainActivity extends Activity {
                                                 }
                                             }
                                         } catch (Exception e4) {
-                                            e = e4;
-                                            err = e.getClass().getSimpleName();
+                                            err = e4.getClass().getSimpleName();
                                             final String error22 = err;
                                             runOnUiThread(new Runnable() { // from class: com.example.vpnlauncher.MainActivity$$ExternalSyntheticLambda24
                                                 @Override // java.lang.Runnable
@@ -882,7 +879,7 @@ public class MainActivity extends Activity {
                 fd.add(new AppInfo(an, virtualPackageKey(an), pm.getDefaultActivityIcon(), null, false, true, fs.contains(virtualPackageKey(an)), "自建", "自有机场", true, false));
             }
         } catch (Exception e6) {
-            e = e6;
+            // ignore
         }
         final String error222 = err;
         runOnUiThread(new Runnable() { // from class: com.example.vpnlauncher.MainActivity$$ExternalSyntheticLambda24
