@@ -1,27 +1,140 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root_layout" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingTop="16dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="12dp">
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-            <TextView android:id="@+id/title_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VPN 管理器" android:textSize="24sp" android:textStyle="bold" android:textColor="#172B4D" />
-            <TextView android:id="@+id/subtitle_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="轻松管理您的 VPN 应用" android:textSize="13sp" android:textColor="#7889A8" />
+android:textStyle="bold"
+                android:textColor="#172B4D" />
+
+            <TextView
+                android:id="@+id/subtitle_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="轻松管理您的 VPN 应用"
+                android:textSize="13sp"
+                android:textColor="#7889A8" />
         </LinearLayout>
-        <TextView android:id="@+id/btn_settings" android:layout_width="wrap_content" android:layout_height="40dp" android:background="#F7FFFFFF" android:gravity="center" android:paddingStart="14dp" android:paddingEnd="14dp" android:text="⚙ 设置" android:textColor="#172B4D" android:textSize="14sp" android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="42dp"
+            android:background="#F7FFFFFF"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingStart="13dp"
+            android:paddingEnd="13dp"
+            android:text="⚙ 设置"
+            android:textColor="#172B4D"
+            android:textSize="14sp"
+            android:textStyle="bold" />
     </LinearLayout>
-    
-    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginBottom="10dp" android:background="@drawable/bg_search_box" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingEnd="14dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔍" android:textSize="16sp" />
-        <EditText android:id="@+id/search_box" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:hint="搜索应用或自有机场..." android:inputType="text" android:maxLines="1" android:imeOptions="actionSearch" android:paddingStart="8dp" android:textColor="#172B4D" android:textSize="15sp" />
-        <TextView android:id="@+id/btn_clear_search" android:layout_width="wrap_content" android:layout_height="wrap_content" android:padding="8dp" android:text="✕" android:textColor="#7889A8" android:textSize="16sp" android:visibility="gone" />
+
+    <!-- 圆角悬浮搜索栏 -->
+    <LinearLayout
+        android:id="@+id/search_container"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="9dp"
+        android:background="@android:color/white"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="13dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/search_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⌕"
+            android:textSize="23sp"
+            android:textColor="#7889A8" />
+
+        <EditText
+            android:id="@+id/search_box"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="搜索应用或自有机场..."
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionSearch"
+            android:paddingStart="8dp"
+            android:paddingEnd="4dp"
+            android:textColor="#172B4D"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/btn_clear_search"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="✕"
+            android:textColor="#7889A8"
+            android:textSize="16sp"
+            android:visibility="gone" />
     </LinearLayout>
-    
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginBottom="6dp">
-        <CheckBox android:id="@+id/show_all_checkbox" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="显示全部应用" android:textSize="14sp" android:textStyle="bold" android:textColor="#172B4D" android:buttonTint="#2878E8" />
-        <TextView android:id="@+id/tv_help" android:layout_width="24dp" android:layout_height="24dp" android:layout_marginStart="8dp" android:gravity="center" android:text="?" android:textSize="14sp" android:textStyle="bold" android:textColor="#FFFFFF" android:background="#2878E8" />
+
+    <!-- 显示全部与帮助 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="5dp">
+
+        <CheckBox
+            android:id="@+id/show_all_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="显示全部应用"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#172B4D"
+            android:buttonTint="#2878E8" />
+
+        <TextView
+            android:id="@+id/tv_help"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="6dp"
+            android:gravity="center"
+            android:text="?"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="#2878E8" />
     </LinearLayout>
-    
-    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <ListView android:id="@+id/list" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@android:color/transparent" android:cacheColorHint="@android:color/transparent" android:clipToPadding="false" android:divider="@null" android:dividerHeight="0dp" android:paddingTop="2dp" android:paddingBottom="16dp" android:scrollbars="none" />
-        <TextView android:id="@+id/empty_view" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:padding="24dp" android:text="正在扫描…" android:textSize="14sp" android:textColor="#7889A8" />
+
+    <!-- 应用列表与空状态 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:cacheColorHint="@android:color/transparent"
+            android:clipToPadding="false"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="14dp"
+            android:scrollbars="none" />
+
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="正在扫描…"
+            android:textSize="14sp"
+            android:textColor="#7889A8" />
     </FrameLayout>
 </LinearLayout>
