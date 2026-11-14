@@ -141,17 +141,14 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle(app.label).setItems(options.toArray(new String[0]), (dialog, which) -> actions.get(which).run()).show();
     }
     
-    // 【更新】：收费标签支持输入自定义金额，并增加了支付方式
     private void showMarkDialog(AppInfo app) { 
         String[] marks = {"最低收费", "最高收费", "支持支/微", "稳定", "下载快", "免费好用", "清除标签"}; 
         new AlertDialog.Builder(this).setTitle("标签").setItems(marks, (dialog, which) -> { 
             if (which == 6) { appMarks.remove(app.packageName); saveSets(); scanApps(); } 
             else if (which == 0 || which == 1) { 
-                final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setHint("请输入具体金额,如: 15元/月");
+                final EditText input = new EditText(this); input.setInputType(InputType.TYPE_CLASS_TEXT); input.setHint("如: 15元/月");
                 new AlertDialog.Builder(this).setTitle(marks[which]).setView(input).setPositiveButton("确定", (d, w) -> {
-                    String amt = input.getText().toString().trim(); 
-                    String res = marks[which] + (amt.isEmpty() ? "" : ": " + amt);
-                    applyMark(app.packageName, res);
+                    String amt = input.getText().toString().trim(); String res = marks[which] + (amt.isEmpty() ? "" : ": " + amt); applyMark(app.packageName, res);
                 }).setNegativeButton("取消", null).show();
             } 
             else applyMark(app.packageName, marks[which]); 
@@ -164,13 +161,8 @@ public class MainActivity extends Activity {
     private void toggleFavorite(String p) { if (favoritePackages.contains(p)) favoritePackages.remove(p); else favoritePackages.add(p); saveSets(); for (AppInfo a : allApps) a.isFavorite = favoritePackages.contains(a.packageName); int f = listView.getFirstVisiblePosition(); View v = listView.getChildAt(0); int t = v == null ? 0 : v.getTop(); sortAndAssignIndex(); filterApps(searchBox.getText().toString()); listView.setSelectionFromTop(f, t); }
     private void copyPackage(String p) { ClipboardManager c = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE); if (c != null) { c.setPrimaryClip(ClipData.newPlainText("pkg", p)); Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show(); } }
     
-    // 【更新】：取消弹窗，直接卸载
     private void confirmUninstall(AppInfo a) { 
-        try { 
-            startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.packageName))); 
-        } catch (Exception e) { 
-            jumpToSettings(a.packageName); 
-        } 
+        try { startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.packageName))); } catch (Exception e) { jumpToSettings(a.packageName); } 
     }
 
     private void showThemeDialog() { int s = prefs.getInt(KEY_THEME, 0); if (s < 0 || s >= THEME_NAMES.length) s = 0; new AlertDialog.Builder(this).setTitle("主题").setSingleChoiceItems(THEME_NAMES, s, (d, w) -> { applyTheme(w, true); d.dismiss(); }).setNegativeButton("取消", null).show(); }
@@ -241,14 +233,14 @@ public class MainActivity extends Activity {
         @Override public View getView(int p, View c, ViewGroup pr) {
             ViewHolder h; if (c == null) { c = LayoutInflater.from(MainActivity.this).inflate(R.layout.row_app, pr, false); h = new ViewHolder(); h.root = c.findViewById(R.id.row_root); h.index = c.findViewById(R.id.tv_index); h.icon = c.findViewById(R.id.app_icon); h.name = c.findViewById(R.id.app_name); h.mark = c.findViewById(R.id.tv_custom_mark); h.reinstallMark = c.findViewById(R.id.tv_reinstalled); h.check = c.findViewById(R.id.check_mark); h.fav = c.findViewById(R.id.tv_favorite); h.size = c.findViewById(R.id.tv_size); h.plus = c.findViewById(R.id.tv_mark_vpn); h.arrow = c.findViewById(R.id.tv_arrow); c.setTag(h); } else h = (ViewHolder) c.getTag();
             AppInfo a = apps.get(p); ThemeColors t = currentTheme;
-            h.index.setText(String.valueOf(a.absoluteIndex)); h.index.setTextColor(t.secondary); h.index.setBackground(roundDrawable(t.indexBackground, Color.TRANSPARENT, dp(12)));
+            h.index.setText(String.valueOf(a.absoluteIndex)); h.index.setTextColor(t.secondary); h.index.setBackground(roundDrawable(t.indexBackground, Color.TRANSPARENT, dp(10)));
             if (a.isVirtual) h.icon.setImageResource(android.R.drawable.ic_menu_compass); else h.icon.setImageDrawable(a.icon);
             h.name.setText(a.label); h.name.setTextColor(t.text); h.size.setText(a.sizeStr); h.size.setTextColor(t.secondary); h.fav.setVisibility(a.isFavorite ? View.VISIBLE : View.GONE); h.arrow.setTextColor(t.secondary);
             
             if (a.mark != null && !a.mark.isEmpty()) { h.mark.setText(a.mark); h.mark.setVisibility(View.VISIBLE); } else h.mark.setVisibility(View.GONE);
             h.reinstallMark.setVisibility(a.isReinstalled ? View.VISIBLE : View.GONE);
 
-            h.root.setBackground(roundDrawable(t.card, t.cardStroke, dp(20)));
+            h.root.setBackground(roundDrawable(t.card, t.cardStroke, dp(18)));
             if (a.isDetected()) { h.check.setVisibility(View.VISIBLE); h.plus.setVisibility(View.GONE); h.plus.setOnClickListener(null); }
             else if (isShowAll) { h.check.setVisibility(View.GONE); h.plus.setTextColor(t.accent); h.plus.setVisibility(View.VISIBLE); h.plus.setOnClickListener(v -> applyMark(a.packageName, "手动收编")); }
             else { h.check.setVisibility(View.GONE); h.plus.setVisibility(View.GONE); h.plus.setOnClickListener(null); }
@@ -261,13 +253,14 @@ public class MainActivity extends Activity {
     private static class ThemeColors {
         final int backgroundStart, backgroundEnd, card, cardStroke, text, secondary, accent, searchBackground, indexBackground; final boolean dark;
         ThemeColors(int s, int e, int c, int st, int t, int sc, int a, int se, int i, boolean d) { backgroundStart = s; backgroundEnd = e; card = c; cardStroke = st; text = t; secondary = sc; accent = a; searchBackground = se; indexBackground = i; dark = d; }
+        // 完美提取了设计图里最靓丽的颜色
         static final ThemeColors[] THEMES = {
-            new ThemeColors(0xFFE0ECFA, 0xFFC6DDF5, 0xF7FFFFFF, 0xFFB3CBE8, 0xFF172B4D, 0xFF5C6D87, 0xFF2878E8, 0xF9FFFFFF, 0xFFE5EEFF, false),
-            new ThemeColors(0xFF0B1220, 0xFF162035, 0xFF1E2A42, 0xFF2D3C56, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF24314B, 0xFF2D3C56, true),
-            new ThemeColors(0xFFE1F2E4, 0xFFCBE7CE, 0xF9FAFFF7, 0xFFB7DBBB, 0xFF2D4532, 0xFF5D7562, 0xFF548B5B, 0xF9FFFFFF, 0xFFDCECD8, false),
-            new ThemeColors(0xFFEDE0FF, 0xFFDAC9F5, 0xFAFFFFFF, 0xFFCBB6EA, 0xFF3A2D52, 0xFF736789, 0xFF8062C9, 0xFAFFFFFF, 0xFFEADDFF, false),
-            new ThemeColors(0xFFFFEEDD, 0xFFFFD9B0, 0xFAFFFCF6, 0xFFEECFAE, 0xFF513D29, 0xFF806B53, 0xFFC17A32, 0xFAFFFFFF, 0xFFFFE8CC, false),
-            new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFAFFFFFF, 0xFFAED9D0, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFAFFFFFF, 0xFFD4ECE6, false)
+            new ThemeColors(0xFFE6F0FF, 0xFFD6E8FF, 0xFFFFFFFF, 0xFFDCE8FA, 0xFF172B4D, 0xFF7889A8, 0xFF2878E8, 0xFFFFFFFF, 0xFFE5EEFF, false),
+            new ThemeColors(0xFF1B1F3B, 0xFF0F1326, 0xFF20253C, 0xFF2D3450, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF28304E, 0xFF2D3450, true),
+            new ThemeColors(0xFFE8F8F0, 0xFFD4F5E1, 0xFFFFFFFF, 0xFFD5E5D1, 0xFF304B37, 0xFF718875, 0xFF548B5B, 0xFFFFFFFF, 0xFFE5F0E1, false),
+            new ThemeColors(0xFFF3E8FF, 0xFFE6D8FF, 0xFFFFFFFF, 0xFFE2D8F2, 0xFF3F315B, 0xFF82769B, 0xFF8062C9, 0xFFFFFFFF, 0xFFEDE5FF, false),
+            new ThemeColors(0xFFFFF6E5, 0xFFFFE0B2, 0xFFFFFFFF, 0xFFF0DFC8, 0xFF57432E, 0xFF927D65, 0xFFC17A32, 0xFFFFFFFF, 0xFFFFEED8, false),
+            new ThemeColors(0xFFE8F7EE, 0xFFD0F0D0, 0xFFFFFFFF, 0xFFD6EAE4, 0xFF285248, 0xFF718F87, 0xFF278F82, 0xFFFFFFFF, 0xFFDFF2EC, false)
         };
     }
 }
