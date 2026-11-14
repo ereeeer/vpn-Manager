@@ -1,4 +1,36 @@
-android:textStyle="bold"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingTop="12dp"
+    android:clipToPadding="false">
+
+    <!-- 顶部标题与设置入口 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/title_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="VPN 管理器"
+                android:textSize="23sp"
+                android:textStyle="bold"
                 android:textColor="#172B4D" />
 
             <TextView
@@ -27,7 +59,7 @@ android:textStyle="bold"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 圆角悬浮搜索栏 -->
+    <!-- 搜索栏 -->
     <LinearLayout
         android:id="@+id/search_container"
         android:layout_width="match_parent"
@@ -137,4 +169,5 @@ android:textStyle="bold"
             android:textSize="14sp"
             android:textColor="#7889A8" />
     </FrameLayout>
+
 </LinearLayout>
