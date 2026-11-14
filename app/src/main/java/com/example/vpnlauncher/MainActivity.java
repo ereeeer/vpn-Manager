@@ -1,4 +1,29 @@
-// 主背景渐变。
+    private static class ThemeBackgroundDrawable extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final ThemeColors theme;
+        private int drawableAlpha = 255;
+        private ColorFilter colorFilter;
+
+        ThemeBackgroundDrawable(ThemeColors theme) {
+            this.theme = theme;
+        }
+
+        private int withAlpha(int color) {
+            int alpha = Color.alpha(color) * drawableAlpha / 255;
+            return (color & 0x00FFFFFF) | (alpha << 24);
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            Rect bounds = getBounds();
+            float width = bounds.width();
+            float height = bounds.height();
+            if (width <= 0 || height <= 0) return;
+
+            int save = canvas.save();
+            canvas.translate(bounds.left, bounds.top);
+
+            // 主背景渐变。
             paint.setShader(new LinearGradient(
                     0, 0, width, height,
                     theme.backgroundStart,
@@ -132,13 +157,19 @@
             indexBackground = i; dark = d;
         }
 
+        // 颜色已调整：背景稍微加深，卡片不再纯白（更柔和）
         static final ThemeColors[] THEMES = {
-            new ThemeColors(0xFFBFD9FF, 0xFF91B9F2, 0xFFFFFFFF, 0xFF82AEE8, 0xFF172B4D, 0xFF5C6D87, 0xFF2878E8, 0xFFFFFFFF, 0xFFE5EEFF, false),
+            // 蓝（默认）
+            new ThemeColors(0xFFA8C8F0, 0xFF7BA8E0, 0xF5FFFFFF, 0xFF7AA3D9, 0xFF172B4D, 0xFF5C6D87, 0xFF2878E8, 0xF8FFFFFF, 0xFFE0ECFF, false),
+            // 深色
             new ThemeColors(0xFF141A2E, 0xFF0A0E17, 0xFF1E263D, 0xFF405477, 0xFFF1F5FF, 0xFF8A9BB8, 0xFF72A7FF, 0xFF24314B, 0xFF2D3C56, true),
-            new ThemeColors(0xFFE1F2E4, 0xFFCBE7CE, 0xFFFFFFFF, 0xFF91C99B, 0xFF2D4532, 0xFF5D7562, 0xFF548B5B, 0xFFFFFFFF, 0xFFDCECD8, false),
-            new ThemeColors(0xFFE6D8FF, 0xFFD1BDFF, 0xFFFFFFFF, 0xFFB39AE8, 0xFF3A2D52, 0xFF736789, 0xFF8062C9, 0xFFFFFFFF, 0xFFEADDFF, false),
-            new ThemeColors(0xFFFFEEDD, 0xFFFFD9B0, 0xFFFFFFFF, 0xFFE2B77F, 0xFF513D29, 0xFF806B53, 0xFFC17A32, 0xFFFFFFFF, 0xFFFFE8CC, false),
-            new ThemeColors(0xFFDEF5F0, 0xFFC0E8E0, 0xFFFFFFFF, 0xFF82C9BA, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xFFFFFFFF, 0xFFD4ECE6, false)
+            // 绿
+            new ThemeColors(0xFFC8E6CC, 0xFFB0D6B5, 0xF5FFFFFF, 0xFF85B98F, 0xFF2D4532, 0xFF5D7562, 0xFF548B5B, 0xF8FFFFFF, 0xFFD4E8D0, false),
+            // 紫
+            new ThemeColors(0xFFD4C4F0, 0xFFBCA8E8, 0xF5FFFFFF, 0xFFA48DD4, 0xFF3A2D52, 0xFF736789, 0xFF8062C9, 0xF8FFFFFF, 0xFFE4D6FF, false),
+            // 橙
+            new ThemeColors(0xFFF5DFC4, 0xFFE8C89A, 0xF5FFFFFF, 0xFFD4A86E, 0xFF513D29, 0xFF806B53, 0xFFC17A32, 0xF8FFFFFF, 0xFFFFE4C4, false),
+            // 青
+            new ThemeColors(0xFFC8EBE4, 0xFFA8D9CF, 0xF5FFFFFF, 0xFF75B8A9, 0xFF234B41, 0xFF5E857C, 0xFF278F82, 0xF8FFFFFF, 0xFFCAE6DF, false)
         };
     }
-}
